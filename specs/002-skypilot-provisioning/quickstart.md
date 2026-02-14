@@ -7,7 +7,7 @@
 
 1. SkyPilot installed: `pip install skypilot[aws]` (or gcp, azure, etc.)
 2. Cloud credentials configured: `sky check` shows at least one enabled cloud
-3. Carapace built and running: `bin/try` or `bin/dev --browser`
+3. Carapace built and running: `script/try` or `script/dev --browser`
 
 ## Scenario 1: Launch a Server
 

@@ -29,7 +29,7 @@ Upgrade the Phase 0 spike Gatekeeper from dummy data to a real filesystem-backed
 | II. Data Sovereignty | **PASS** | Vaults are local directories synced from user's machine. Gatekeeper never writes data — read-only access. |
 | III. Zero Configuration | **PASS** | Env vars with sensible defaults. No user-facing configuration for the Gatekeeper itself. |
 | IV. Thin Desktop Shell | **PASS** | All access control logic lives in Bun/TypeScript Gatekeeper, not in Tauri. Desktop only spawns/stops the process. |
-| V. Vertical Slice | **PASS** | This is Phase 1A of the vertical slice — the security layer. Testable with `bin/dev --browser` and `bun test`. |
+| V. Vertical Slice | **PASS** | This is Phase 1A of the vertical slice — the security layer. Testable with `script/dev --browser` and `bun test`. |
 | VI. Upstream Integrity | **PASS** | No OpenClaw code. Gatekeeper is a standalone service. |
 | VII. Fail Secure | **PASS** | Defaults to LOCAL (FR-008). Unknown paths rejected. Traversal attempts rejected. Missing vault prefix rejected. |
 | .envrc protection | **PASS** | No file writes in this feature. .envrc not referenced. |

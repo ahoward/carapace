@@ -7,7 +7,7 @@
 
 - macOS (arm64 or x86_64) or Linux (x86_64)
 - Internet connection (for first-time download)
-- Bun installed (via `bin/setup`)
+- Bun installed (via `script/setup`)
 - ~200MB free disk space
 
 ## Scenario 1: First-Time User — Auto-Install on Launch
@@ -28,7 +28,7 @@
 ## Scenario 2: Developer Setup
 
 1. Ensure `~/.carapace/` does not exist: `rm -rf ~/.carapace`
-2. Run: `./bin/setup`
+2. Run: `./script/setup`
 3. **Expected**: Output includes uv and skypilot installation lines:
    ```
    ==> checking prerequisites
@@ -44,8 +44,8 @@
 
 ## Scenario 3: Idempotent Re-Install
 
-1. Run `./bin/setup` (installs uv + skypilot)
-2. Run `./bin/setup` again
+1. Run `./script/setup` (installs uv + skypilot)
+2. Run `./script/setup` again
 3. **Expected**: uv and skypilot steps complete instantly (already installed)
 4. Start gatekeeper, trigger launch
 5. **Expected**: No installation phase — proceeds directly to credential check
@@ -132,7 +132,7 @@
 - [ ] `GET /cluster/install-status` reports correct state
 - [ ] `POST /cluster/ensure-skypilot` works as explicit trigger
 - [ ] SSE events stream during installation
-- [ ] `bin/setup` installs uv + skypilot
+- [ ] `script/setup` installs uv + skypilot
 - [ ] Global `sky` in PATH is detected as fallback
 - [ ] Error message is clear when network fails
 - [ ] Works on macOS arm64

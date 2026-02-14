@@ -17,7 +17,7 @@ for (const arg of args) {
   if (arg === "--browser") mode = "browser";
   else if (arg === "--desktop") mode = "desktop";
   else if (arg === "-h" || arg === "--help") {
-    console.log(`usage: ./bin/dev [--browser | --desktop]
+    console.log(`usage: ./script/dev [--browser | --desktop]
 
   --browser   vite dev server + gatekeeper (default)
   --desktop   cargo tauri dev (spawns gatekeeper from rust)`);

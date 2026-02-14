@@ -5,11 +5,11 @@
 
 ## Summary
 
-Bundle SkyPilot CLI into Carapace via the uv package manager. One install code path (steel thread) for runtime auto-install, developer setup (`bin/setup`), and container builds (Dockerfile). uv is downloaded to `~/.carapace/uv/bin/uv`, then `uv tool install skypilot-nightly[aws]` creates an isolated environment with its own Python runtime at `~/.carapace/tools/`. Lazy install on first cloud action, with progress streamed via existing SSE event bus.
+Bundle SkyPilot CLI into Carapace via the uv package manager. One install code path (steel thread) for runtime auto-install, developer setup (`script/setup`), and container builds (Dockerfile). uv is downloaded to `~/.carapace/uv/bin/uv`, then `uv tool install skypilot-nightly[aws]` creates an isolated environment with its own Python runtime at `~/.carapace/tools/`. Lazy install on first cloud action, with progress streamed via existing SSE event bus.
 
 ## Technical Context
 
-**Language/Version**: TypeScript (Bun runtime) + Bash (bin/setup)
+**Language/Version**: TypeScript (Bun runtime) + Bash (script/setup)
 **Primary Dependencies**: uv (astral-sh/uv v0.10.2), skypilot-nightly[aws]
 **Storage**: Filesystem only — `~/.carapace/` directory tree, no database
 **Testing**: `bun:test` (Bun's built-in test runner)
@@ -148,7 +148,7 @@ Module-level `let install_promise: Promise<string> | null = null`. If non-null, 
 4. **sky_binary() change**: Modify `sky_runner.ts` to check managed path first
 5. **Handler integration**: Auto-install in `cluster.ts`, new endpoints, updated error messages
 6. **Route wiring**: Add `/cluster/install-status` and `/cluster/ensure-skypilot` to `index.ts`
-7. **bin/setup update**: `ensure_uv()` and `ensure_skypilot()` bash functions
+7. **script/setup update**: `ensure_uv()` and `ensure_skypilot()` bash functions
 8. **Dockerfile update**: Pre-install uv + skypilot at build time
 
 ## Complexity Tracking

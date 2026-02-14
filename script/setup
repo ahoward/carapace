@@ -62,21 +62,21 @@ ensure_shell_profile() {
 
   if ! grep -q '\.cargo/env' "$profile" 2>/dev/null; then
     echo '' >> "$profile"
-    echo '# rust (added by carapace bin/setup)' >> "$profile"
+    echo '# rust (added by carapace script/setup)' >> "$profile"
     echo '[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"' >> "$profile"
     changed=true
   fi
 
   if ! grep -q '\.bun/bin' "$profile" 2>/dev/null; then
     echo '' >> "$profile"
-    echo '# bun (added by carapace bin/setup)' >> "$profile"
+    echo '# bun (added by carapace script/setup)' >> "$profile"
     echo 'export PATH="$HOME/.bun/bin:$PATH"' >> "$profile"
     changed=true
   fi
 
   if ! grep -q '\.carapace/tools/bin' "$profile" 2>/dev/null; then
     echo '' >> "$profile"
-    echo '# carapace cloud tools (added by carapace bin/setup)' >> "$profile"
+    echo '# carapace cloud tools (added by carapace script/setup)' >> "$profile"
     echo 'export PATH="$HOME/.carapace/tools/bin:$PATH"' >> "$profile"
     changed=true
   fi
@@ -196,7 +196,7 @@ if [[ "$cargo_ok" != "true" ]]; then
   else
     echo "    sudo apt-get install -y build-essential"
   fi
-  echo "  then re-run: ./bin/setup"
+  echo "  then re-run: ./script/setup"
 fi
 
 echo ""
@@ -213,4 +213,4 @@ kill "$gk_pid" 2>/dev/null || true
 wait "$gk_pid" 2>/dev/null || true
 
 echo ""
-echo "done. run ./bin/dev to start developing."
+echo "done. run ./script/dev to start developing."

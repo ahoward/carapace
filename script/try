@@ -8,5 +8,5 @@ process.chdir(ROOT);
 
 await $`git pull`;
 await $`bun test --cwd gatekeeper`;
-await $`./bin/setup`;
-await $`./bin/dev --browser`;
+await $`./script/setup`;
+await $`./script/dev --browser`;

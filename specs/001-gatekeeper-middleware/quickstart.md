@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Bun 1.3+ (`bin/setup` installs it)
+- Bun 1.3+ (`script/setup` installs it)
 - Docker (optional, for container testing)
 
 ## Run locally
@@ -12,7 +12,7 @@
 bun run gatekeeper/src/index.ts
 
 # Or use the dev script (starts gatekeeper + vite frontend)
-bin/dev --browser
+script/dev --browser
 ```
 
 ## Test the API

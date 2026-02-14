@@ -63,17 +63,17 @@
 
 ## Phase 4: User Story 2 — Developer Setup Installs Cloud Tools (Priority: P2)
 
-**Goal**: `bin/setup` installs uv + SkyPilot using same paths/env vars as the runtime installer (steel thread parity).
+**Goal**: `script/setup` installs uv + SkyPilot using same paths/env vars as the runtime installer (steel thread parity).
 
-**Independent Test**: Delete `~/.carapace/`, run `./bin/setup`, verify `~/.carapace/tools/bin/sky` exists and is executable.
+**Independent Test**: Delete `~/.carapace/`, run `./script/setup`, verify `~/.carapace/tools/bin/sky` exists and is executable.
 
 ### Implementation for User Story 2
 
-- [X] T013 [US2] Add `ensure_uv()` bash function to `bin/setup` — check if `~/.carapace/uv/bin/uv` exists and is executable; if not, detect platform via `uname -m` and `uname`, download uv tarball from GitHub Releases, extract with `--strip-components=1` to `~/.carapace/uv/bin/`, chmod +x; follows same pattern as existing `ensure_bun()` and `ensure_rust()`
-- [X] T014 [US2] Add `ensure_skypilot()` bash function to `bin/setup` — check if `~/.carapace/tools/bin/sky` exists; if not, set `UV_TOOL_BIN_DIR=~/.carapace/tools/bin`, `UV_TOOL_DIR=~/.carapace/tools/environments`, `UV_PYTHON_INSTALL_DIR=~/.carapace/python`, run `~/.carapace/uv/bin/uv tool install "skypilot-nightly[aws]"`; follows same idempotent pattern as ensure_bun/ensure_rust
-- [X] T015 [US2] Add `~/.carapace/tools/bin` to shell profile PATH in `ensure_shell_profile()` in `bin/setup` — add check for `.carapace/tools/bin` pattern, append `export PATH="$HOME/.carapace/tools/bin:$PATH"` if missing
+- [X] T013 [US2] Add `ensure_uv()` bash function to `script/setup` — check if `~/.carapace/uv/bin/uv` exists and is executable; if not, detect platform via `uname -m` and `uname`, download uv tarball from GitHub Releases, extract with `--strip-components=1` to `~/.carapace/uv/bin/`, chmod +x; follows same pattern as existing `ensure_bun()` and `ensure_rust()`
+- [X] T014 [US2] Add `ensure_skypilot()` bash function to `script/setup` — check if `~/.carapace/tools/bin/sky` exists; if not, set `UV_TOOL_BIN_DIR=~/.carapace/tools/bin`, `UV_TOOL_DIR=~/.carapace/tools/environments`, `UV_PYTHON_INSTALL_DIR=~/.carapace/python`, run `~/.carapace/uv/bin/uv tool install "skypilot-nightly[aws]"`; follows same idempotent pattern as ensure_bun/ensure_rust
+- [X] T015 [US2] Add `~/.carapace/tools/bin` to shell profile PATH in `ensure_shell_profile()` in `script/setup` — add check for `.carapace/tools/bin` pattern, append `export PATH="$HOME/.carapace/tools/bin:$PATH"` if missing
 
-**Checkpoint**: `bin/setup` installs uv + skypilot using identical paths as runtime installer — dev/prod parity verified
+**Checkpoint**: `script/setup` installs uv + skypilot using identical paths as runtime installer — dev/prod parity verified
 
 ---
 
@@ -193,7 +193,7 @@ Task T012: "Wire auto-install into handle_cluster_check()"
 
 1. Setup + Foundational → Foundation ready
 2. Add US1 (Auto-install) → Test on Linux → Push (MVP!)
-3. Add US2 (bin/setup) → Test on macOS → Push
+3. Add US2 (script/setup) → Test on macOS → Push
 4. Add US3 (Status endpoint) → Test → Push
 5. Add US4 (Platform tests) → Verify cross-platform → Push
 6. Polish → Dockerfile + full test suite → Push
@@ -208,7 +208,7 @@ Task T012: "Wire auto-install into handle_cluster_check()"
 - Verify tests fail before implementing
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
-- `ensure_skypilot()` is THE steel thread — same function called from handlers, bin/setup mimics same paths
+- `ensure_skypilot()` is THE steel thread — same function called from handlers, script/setup mimics same paths
 - `download_uv()` uses `fetch()` + `Bun.spawn(["tar", ...])` for extraction — no npm tar dependency
 - `uv tool install` creates a self-contained shim — no runtime env vars needed after install
 - Concurrency guard: promise-based mutex prevents parallel installs from corrupting state

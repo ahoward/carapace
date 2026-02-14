@@ -3,7 +3,7 @@
 **Feature Branch**: `003-skypilot-installer`
 **Created**: 2026-02-14
 **Status**: Draft
-**Input**: User description: "Steel thread SkyPilot installer: Bundle SkyPilot CLI into Carapace via uv package manager. One install code path for dev, prod, and Docker (dev/prod parity). Download uv binary on first use, then install SkyPilot into ~/.carapace/ isolated environment. Lazy install when user first triggers cloud operations. Progress streamed via existing SSE event bus. Cross-platform: macOS arm64/x86, Linux x86_64. Update bin/setup and Dockerfile to use same paths and commands. No system Python required."
+**Input**: User description: "Steel thread SkyPilot installer: Bundle SkyPilot CLI into Carapace via uv package manager. One install code path for dev, prod, and Docker (dev/prod parity). Download uv binary on first use, then install SkyPilot into ~/.carapace/ isolated environment. Lazy install when user first triggers cloud operations. Progress streamed via existing SSE event bus. Cross-platform: macOS arm64/x86, Linux x86_64. Update script/setup and Dockerfile to use same paths and commands. No system Python required."
 
 ## User Scenarios & Testing *(mandatory)*
 

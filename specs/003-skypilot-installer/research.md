@@ -88,7 +88,7 @@ uv-x86_64-unknown-linux-gnu/
 | `darwin` + `x64` | `x86_64-apple-darwin` |
 | `linux` + `x64` | `x86_64-unknown-linux-gnu` |
 
-For bash (`bin/setup`): `uname -m` gives `arm64`→`aarch64` or `x86_64`, `uname` gives `Darwin` or `Linux`.
+For bash (`script/setup`): `uname -m` gives `arm64`→`aarch64` or `x86_64`, `uname` gives `Darwin` or `Linux`.
 
 ## 6. Concurrency Control
 
@@ -109,13 +109,13 @@ For bash (`bin/setup`): `uname -m` gives `arm64`→`aarch64` or `x86_64`, `uname
 
 **Handler changes**: `handle_cluster_launch` and `handle_cluster_check` gain auto-install flow. When `sky_binary()` returns null, they call `ensure_skypilot()` with progress callbacks wired to `broadcast_event()`. Status refresh handlers do NOT auto-install (passive polling should not trigger downloads).
 
-## 8. bin/setup Steel Thread Parity
+## 8. script/setup Steel Thread Parity
 
-**Decision**: `bin/setup` uses the same paths and `uv tool install` command as the TypeScript installer — parallel bash implementation.
+**Decision**: `script/setup` uses the same paths and `uv tool install` command as the TypeScript installer — parallel bash implementation.
 
 **Rationale**: True steel thread means identical paths (`~/.carapace/uv/bin/uv`, `~/.carapace/tools/bin/sky`) and identical env vars (`UV_TOOL_BIN_DIR`, `UV_TOOL_DIR`). The bash implementation follows the same `ensure_X()` pattern as `ensure_bun()` and `ensure_rust()`. It's idempotent: if already installed, prints version and returns.
 
-**Alternative rejected**: Having `bin/setup` call the gatekeeper's HTTP endpoint — fragile, requires gatekeeper to boot cleanly just to install a dependency.
+**Alternative rejected**: Having `script/setup` call the gatekeeper's HTTP endpoint — fragile, requires gatekeeper to boot cleanly just to install a dependency.
 
 ## Sources
 
