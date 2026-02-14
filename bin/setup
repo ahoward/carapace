@@ -3,7 +3,20 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+installed_something=false
+
 echo "==> checking prerequisites"
+
+# macOS: ensure xcode command line tools
+if [[ "$(uname)" == "Darwin" ]]; then
+  if ! xcode-select -p &>/dev/null; then
+    echo "  xcode cli tools not found — installing (this may take a while)..."
+    xcode-select --install 2>/dev/null || true
+    echo "  waiting for xcode cli tools install to finish..."
+    until xcode-select -p &>/dev/null; do sleep 5; done
+  fi
+  printf "  %-12s %s\n" "xcode-cli" "$(xcode-select -p)"
+fi
 
 ensure_bun() {
   if command -v bun &>/dev/null; then
@@ -12,13 +25,16 @@ ensure_bun() {
   fi
   echo "  bun not found — installing..."
   curl -fsSL https://bun.sh/install | bash
-  # source the env so bun is available in this session
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
   export PATH="$BUN_INSTALL/bin:$PATH"
+  installed_something=true
   printf "  %-12s %s\n" "bun" "$(command -v bun)"
 }
 
 ensure_rust() {
+  # pick up cargo env if it exists but isn't in PATH yet
+  [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
   if command -v rustc &>/dev/null && command -v cargo &>/dev/null; then
     printf "  %-12s %s\n" "rustc" "$(command -v rustc)"
     printf "  %-12s %s\n" "cargo" "$(command -v cargo)"
@@ -27,6 +43,7 @@ ensure_rust() {
   echo "  rust not found — installing via rustup..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --quiet
   source "$HOME/.cargo/env"
+  installed_something=true
   printf "  %-12s %s\n" "rustc" "$(command -v rustc)"
   printf "  %-12s %s\n" "cargo" "$(command -v cargo)"
 }
@@ -74,11 +91,21 @@ fi
 
 echo ""
 echo "==> verifying rust build"
-cargo check --manifest-path src-tauri/Cargo.toml 2>&1 | tail -1
+if ! cargo check --manifest-path src-tauri/Cargo.toml 2>&1 | tail -3; then
+  echo ""
+  echo "  cargo check failed. common fixes:"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    echo "    xcode-select --install"
+    echo "    sudo xcode-select --reset"
+  else
+    echo "    sudo apt-get install -y build-essential"
+  fi
+  echo "  then re-run: ./bin/setup"
+fi
 
 echo ""
 echo "==> verifying gatekeeper"
-timeout 3 bun run gatekeeper/src/index.ts &
+bun run gatekeeper/src/index.ts &
 gk_pid=$!
 sleep 1
 if curl -sf http://localhost:3001/health >/dev/null 2>&1; then
@@ -90,4 +117,8 @@ kill "$gk_pid" 2>/dev/null || true
 wait "$gk_pid" 2>/dev/null || true
 
 echo ""
-echo "done. run ./bin/dev to start developing."
+if [[ "$installed_something" == "true" ]]; then
+  echo "done. restart your shell (or: source ~/.bashrc) then run ./bin/dev"
+else
+  echo "done. run ./bin/dev to start developing."
+fi
