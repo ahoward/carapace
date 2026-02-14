@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { make_error } from "./envelope";
+import { make_envelope, make_error } from "./envelope";
 import { handle_set_mode } from "./handlers/control";
 import { handle_fs_list } from "./handlers/fs_list";
 import { handle_fs_read } from "./handlers/fs_read";
@@ -65,6 +65,16 @@ const server = Bun.serve({
       return with_cors(handle_fs_list(url.pathname, current_mode));
     }
 
+    if (url.pathname === "/control/shutdown" && request.method === "POST") {
+      const start = Date.now();
+      const response = with_cors(
+        Response.json(make_envelope(url.pathname, start, { message: "shutting down" })),
+      );
+      // schedule shutdown after response is sent
+      setTimeout(() => graceful_shutdown("HTTP /control/shutdown"), 50);
+      return response;
+    }
+
     const start = Date.now();
     return with_cors(
       Response.json(make_error(url.pathname, start, { route: ["not found"] }), {
@@ -74,4 +84,13 @@ const server = Bun.serve({
   },
 });
 
-console.log(`gatekeeper listening on http://localhost:${server.port}`);
+function graceful_shutdown(reason: string) {
+  console.log(`gatekeeper shutting down (${reason})`);
+  server.stop(true);
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => graceful_shutdown("SIGTERM"));
+process.on("SIGINT", () => graceful_shutdown("SIGINT"));
+
+console.log(`gatekeeper listening on http://localhost:${server.port} (pid ${process.pid})`);

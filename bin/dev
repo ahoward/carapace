@@ -31,9 +31,32 @@ done
 cleanup() {
   echo ""
   echo "shutting down..."
+
+  # ask gatekeeper to shut down gracefully via HTTP first
+  curl -sf -X POST http://localhost:3001/control/shutdown >/dev/null 2>&1 || true
+
+  # SIGTERM both processes
   kill "$gk_pid" 2>/dev/null || true
   kill "$vite_pid" 2>/dev/null || true
+
+  # give them 2 seconds to exit cleanly
+  local deadline=$((SECONDS + 2))
+  while kill -0 "$gk_pid" 2>/dev/null || kill -0 "$vite_pid" 2>/dev/null; do
+    if [[ $SECONDS -ge $deadline ]]; then
+      break
+    fi
+    sleep 0.1
+  done
+
+  # SIGKILL anything still alive
+  kill -9 "$gk_pid" 2>/dev/null || true
+  kill -9 "$vite_pid" 2>/dev/null || true
   wait 2>/dev/null || true
+
+  # kill any orphaned gatekeeper on port 3001
+  lsof -ti:3001 2>/dev/null | xargs kill -9 2>/dev/null || true
+
+  echo "done."
 }
 
 if [[ "$mode" == "browser" ]]; then

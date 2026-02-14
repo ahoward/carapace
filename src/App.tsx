@@ -6,6 +6,7 @@ import {
   type ResultEnvelope,
   check_health,
   fetch_file_list,
+  shutdown as gk_shutdown,
   set_mode as set_gk_mode,
 } from "./lib/gatekeeper_client";
 
@@ -145,10 +146,19 @@ function App() {
         set_message(result);
         add_log("info", `stop_gatekeeper → ${result}`);
       } else {
-        const msg = "stop gatekeeper manually (ctrl+c the process)";
-        set_message(msg);
-        add_log("warn", msg);
+        add_log("info", "POST /control/shutdown → requesting");
+        const envelope = await gk_shutdown(GATEKEEPER_URL);
+        if (envelope.status === "success") {
+          add_log("info", "POST /control/shutdown → gatekeeper shutting down");
+        } else {
+          const err_msg = envelope.errors
+            ? Object.values(envelope.errors).flat().join(", ")
+            : "unknown error";
+          add_log("error", `POST /control/shutdown → ${err_msg}`);
+        }
       }
+      // give it a moment to actually die
+      await new Promise((r) => setTimeout(r, 500));
       await fetch_status();
       set_files([]);
     } catch (err) {

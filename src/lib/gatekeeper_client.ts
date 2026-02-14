@@ -105,3 +105,18 @@ export async function set_mode(
     return network_error("/control/set-mode", err);
   }
 }
+
+export interface ShutdownResult {
+  message: string;
+}
+
+export async function shutdown(base_url: string): Promise<ResultEnvelope<ShutdownResult>> {
+  try {
+    const response = await fetch(`${base_url}/control/shutdown`, {
+      method: "POST",
+    });
+    return await response.json();
+  } catch (err) {
+    return network_error("/control/shutdown", err);
+  }
+}
