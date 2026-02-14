@@ -9,7 +9,12 @@ import {
   shutdown as gk_shutdown,
   set_mode as set_gk_mode,
 } from "./lib/gatekeeper_client";
-import { PLAYBOOK_STEPS, type PlaybookStep, build_qa_report } from "./lib/playbook";
+import {
+  PLAYBOOK_STEPS,
+  type PlaybookStep,
+  type StepResult,
+  build_qa_report,
+} from "./lib/playbook";
 
 const GATEKEEPER_URL = "http://localhost:3001";
 
@@ -48,7 +53,7 @@ function App() {
   const [loading, set_loading] = useState(false);
   const [logs, set_logs] = useState<LogEntry[]>([]);
   const [ops, set_ops] = useState<OpEntry[]>([]);
-  const [checks, set_checks] = useState<Record<string, boolean>>({});
+  const [results, set_results] = useState<Record<string, StepResult>>({});
   const [debug_open, set_debug_open] = useState(true);
   const [oplog_open, set_oplog_open] = useState(true);
   const [playbook_open, set_playbook_open] = useState(true);
@@ -212,15 +217,20 @@ function App() {
 
   const handle_copy_report = async () => {
     add_op("clicked Copy QA Report");
-    const report = build_qa_report(checks, ops, logs);
+    const report = build_qa_report(results, ops, logs);
     await navigator.clipboard.writeText(report);
     set_copied(true);
     setTimeout(() => set_copied(false), 2000);
   };
 
-  const toggle_check = (id: string) => {
-    set_checks((prev) => ({ ...prev, [id]: !prev[id] }));
+  const mark_step = (id: string, result: StepResult) => {
+    add_op(`marked "${PLAYBOOK_STEPS.find((s) => s.id === id)?.title}" as ${result.toUpperCase()}`);
+    set_results((prev) => ({ ...prev, [id]: result }));
   };
+
+  // current step = first step that is still pending
+  const current_step_id =
+    PLAYBOOK_STEPS.find((s) => (results[s.id] ?? "pending") === "pending")?.id ?? null;
 
   return (
     <main>
@@ -275,8 +285,9 @@ function App() {
 
         <PlaybookPanel
           steps={PLAYBOOK_STEPS}
-          checks={checks}
-          on_toggle_check={toggle_check}
+          results={results}
+          current_step_id={current_step_id}
+          on_mark={mark_step}
           open={playbook_open}
           on_toggle={() => set_playbook_open(!playbook_open)}
         />
@@ -291,39 +302,72 @@ function App() {
 
 function PlaybookPanel({
   steps,
-  checks,
-  on_toggle_check,
+  results,
+  current_step_id,
+  on_mark,
   open,
   on_toggle,
 }: {
   steps: PlaybookStep[];
-  checks: Record<string, boolean>;
-  on_toggle_check: (id: string) => void;
+  results: Record<string, StepResult>;
+  current_step_id: string | null;
+  on_mark: (id: string, result: StepResult) => void;
   open: boolean;
   on_toggle: () => void;
 }) {
-  const done = steps.filter((s) => checks[s.id]).length;
+  const pass_count = steps.filter((s) => results[s.id] === "pass").length;
+  const fail_count = steps.filter((s) => results[s.id] === "fail").length;
+
+  let summary: string;
+  if (fail_count > 0) {
+    summary = `${pass_count} pass, ${fail_count} fail`;
+  } else if (pass_count === steps.length) {
+    summary = "all pass";
+  } else {
+    summary = `${pass_count}/${steps.length}`;
+  }
+
   return (
     <div className="playbook-panel">
       <button type="button" className="panel-toggle" onClick={on_toggle}>
-        {open ? "\u25BC" : "\u25B6"} Playbook ({done}/{steps.length})
+        {open ? "\u25BC" : "\u25B6"} Playbook ({summary})
       </button>
       {open && (
         <div className="playbook-list">
-          {steps.map((step) => (
-            <label key={step.id} className="playbook-step">
-              <input
-                type="checkbox"
-                checked={!!checks[step.id]}
-                onChange={() => on_toggle_check(step.id)}
-              />
-              <div className="playbook-step-body">
-                <strong>{step.title}</strong>
-                <span className="playbook-instruction">{step.instruction}</span>
-                <span className="playbook-expected">Expect: {step.expected}</span>
+          {steps.map((step) => {
+            const r = results[step.id] ?? "pending";
+            const is_current = step.id === current_step_id;
+            return (
+              <div
+                key={step.id}
+                className={`playbook-step ${is_current ? "playbook-current" : ""} playbook-${r}`}
+              >
+                <div className="playbook-step-body">
+                  <strong>
+                    {r === "pass" ? "\u2705" : r === "fail" ? "\u274C" : "\u2022"} {step.title}
+                  </strong>
+                  <span className="playbook-instruction">{step.instruction}</span>
+                  <span className="playbook-expected">Expect: {step.expected}</span>
+                </div>
+                <div className="playbook-actions">
+                  <button
+                    type="button"
+                    className="step-pass"
+                    onClick={() => on_mark(step.id, r === "pass" ? "pending" : "pass")}
+                  >
+                    {r === "pass" ? "undo" : "pass"}
+                  </button>
+                  <button
+                    type="button"
+                    className="step-fail"
+                    onClick={() => on_mark(step.id, r === "fail" ? "pending" : "fail")}
+                  >
+                    {r === "fail" ? "undo" : "fail"}
+                  </button>
+                </div>
               </div>
-            </label>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

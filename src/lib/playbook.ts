@@ -2,8 +2,11 @@
  * QA Playbook — pure data, no React/DOM dependencies.
  *
  * Each step describes what the tester should do and what they should see.
- * The UI renders these as a checklist; the tester checks them off manually.
+ * The UI renders these with PASS / FAIL / skip controls.
+ * Tester works through them in order; on first FAIL, copy the report.
  */
+
+export type StepResult = "pass" | "fail" | "pending";
 
 export interface PlaybookStep {
   id: string;
@@ -55,7 +58,7 @@ export const PLAYBOOK_STEPS: PlaybookStep[] = [
  * Build a plain-text QA report for clipboard handoff.
  */
 export function build_qa_report(
-  checks: Record<string, boolean>,
+  results: Record<string, StepResult>,
   op_entries: { time: string; message: string }[],
   debug_entries: { time: string; level: string; message: string }[],
 ): string {
@@ -67,8 +70,11 @@ export function build_qa_report(
 
   lines.push("== Playbook ==");
   for (const step of PLAYBOOK_STEPS) {
-    const mark = checks[step.id] ? "X" : " ";
-    lines.push(`[${mark}] ${step.title}: ${step.instruction}`);
+    const r = results[step.id] ?? "pending";
+    const mark = r === "pass" ? "PASS" : r === "fail" ? "FAIL" : "----";
+    lines.push(`[${mark}] ${step.title}`);
+    lines.push(`        do: ${step.instruction}`);
+    lines.push(`    expect: ${step.expected}`);
   }
   lines.push("");
 
