@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+git pull
+bun test --cwd gatekeeper
+./bin/setup
+exec ./bin/dev --browser
