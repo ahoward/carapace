@@ -123,7 +123,7 @@ ensure_skypilot() {
   export UV_TOOL_DIR="$HOME/.carapace/tools/environments"
   export UV_PYTHON_INSTALL_DIR="$HOME/.carapace/python"
   mkdir -p "$UV_TOOL_BIN_DIR" "$UV_TOOL_DIR" "$UV_PYTHON_INSTALL_DIR"
-  "$uv_bin" tool install "skypilot-nightly[aws]"
+  "$uv_bin" tool install --with pip "skypilot-nightly[aws]"
   printf "  %-12s %s\n" "sky" "$sky_bin"
 }
 

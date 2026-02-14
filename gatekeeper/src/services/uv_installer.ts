@@ -143,7 +143,7 @@ async function do_ensure_skypilot(
   await mkdir(env.UV_TOOL_DIR, { recursive: true });
   await mkdir(env.UV_PYTHON_INSTALL_DIR, { recursive: true });
 
-  const proc = Bun.spawn([uv_path, "tool", "install", "skypilot-nightly[aws]"], {
+  const proc = Bun.spawn([uv_path, "tool", "install", "--with", "pip", "skypilot-nightly[aws]"], {
     stdout: "pipe",
     stderr: "pipe",
     env,
