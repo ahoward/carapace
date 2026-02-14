@@ -9,6 +9,7 @@ import {
   shutdown as gk_shutdown,
   set_mode as set_gk_mode,
 } from "./lib/gatekeeper_client";
+import { PLAYBOOK_STEPS, type PlaybookStep, build_qa_report } from "./lib/playbook";
 
 const GATEKEEPER_URL = "http://localhost:3001";
 
@@ -21,7 +22,12 @@ interface LogEntry {
   message: string;
 }
 
-const MAX_LOG_ENTRIES = 100;
+interface OpEntry {
+  time: string;
+  message: string;
+}
+
+const MAX_ENTRIES = 100;
 
 function format_time(): string {
   const d = new Date();
@@ -41,7 +47,12 @@ function App() {
   const [message, set_message] = useState<string>("");
   const [loading, set_loading] = useState(false);
   const [logs, set_logs] = useState<LogEntry[]>([]);
+  const [ops, set_ops] = useState<OpEntry[]>([]);
+  const [checks, set_checks] = useState<Record<string, boolean>>({});
   const [debug_open, set_debug_open] = useState(true);
+  const [oplog_open, set_oplog_open] = useState(true);
+  const [playbook_open, set_playbook_open] = useState(true);
+  const [copied, set_copied] = useState(false);
 
   const is_tauri = "__TAURI_INTERNALS__" in window;
 
@@ -49,7 +60,15 @@ function App() {
     set_logs((prev) => {
       const entry: LogEntry = { time: format_time(), level, message };
       const next = [...prev, entry];
-      return next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
+      return next.length > MAX_ENTRIES ? next.slice(-MAX_ENTRIES) : next;
+    });
+  }, []);
+
+  const add_op = useCallback((message: string) => {
+    set_ops((prev) => {
+      const entry: OpEntry = { time: format_time(), message };
+      const next = [...prev, entry];
+      return next.length > MAX_ENTRIES ? next.slice(-MAX_ENTRIES) : next;
     });
   }, []);
 
@@ -115,6 +134,7 @@ function App() {
   }, [gk_status, fetch_files]);
 
   const handle_start = async () => {
+    add_op("clicked Start Gatekeeper");
     set_loading(true);
     set_message("");
     try {
@@ -138,6 +158,7 @@ function App() {
   };
 
   const handle_stop = async () => {
+    add_op("clicked Stop Gatekeeper");
     set_loading(true);
     set_message("");
     try {
@@ -157,7 +178,6 @@ function App() {
           add_log("error", `POST /control/shutdown → ${err_msg}`);
         }
       }
-      // give it a moment to actually die
       await new Promise((r) => setTimeout(r, 500));
       await fetch_status();
       set_files([]);
@@ -170,6 +190,7 @@ function App() {
 
   const handle_toggle_mode = async () => {
     const new_mode: Mode = mode === "LOCAL" ? "CLOUD" : "LOCAL";
+    add_op(`clicked Switch to ${new_mode}`);
     add_log("info", `POST /control/set-mode → requesting ${new_mode}`);
     const envelope = await set_gk_mode(GATEKEEPER_URL, new_mode);
     const level = log_level_for_envelope(envelope);
@@ -187,6 +208,18 @@ function App() {
       set_message(err_msg);
       add_log(level, `POST /control/set-mode → ${err_msg}`);
     }
+  };
+
+  const handle_copy_report = async () => {
+    add_op("clicked Copy QA Report");
+    const report = build_qa_report(checks, ops, logs);
+    await navigator.clipboard.writeText(report);
+    set_copied(true);
+    setTimeout(() => set_copied(false), 2000);
+  };
+
+  const toggle_check = (id: string) => {
+    set_checks((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -235,8 +268,100 @@ function App() {
         </p>
       )}
 
-      <DebugPanel logs={logs} open={debug_open} on_toggle={() => set_debug_open(!debug_open)} />
+      <div className="qa-panels">
+        <button type="button" className="copy-qa-btn" onClick={handle_copy_report}>
+          {copied ? "Copied!" : "Copy QA Report"}
+        </button>
+
+        <PlaybookPanel
+          steps={PLAYBOOK_STEPS}
+          checks={checks}
+          on_toggle_check={toggle_check}
+          open={playbook_open}
+          on_toggle={() => set_playbook_open(!playbook_open)}
+        />
+
+        <OpLogPanel entries={ops} open={oplog_open} on_toggle={() => set_oplog_open(!oplog_open)} />
+
+        <DebugPanel logs={logs} open={debug_open} on_toggle={() => set_debug_open(!debug_open)} />
+      </div>
     </main>
+  );
+}
+
+function PlaybookPanel({
+  steps,
+  checks,
+  on_toggle_check,
+  open,
+  on_toggle,
+}: {
+  steps: PlaybookStep[];
+  checks: Record<string, boolean>;
+  on_toggle_check: (id: string) => void;
+  open: boolean;
+  on_toggle: () => void;
+}) {
+  const done = steps.filter((s) => checks[s.id]).length;
+  return (
+    <div className="playbook-panel">
+      <button type="button" className="panel-toggle" onClick={on_toggle}>
+        {open ? "\u25BC" : "\u25B6"} Playbook ({done}/{steps.length})
+      </button>
+      {open && (
+        <div className="playbook-list">
+          {steps.map((step) => (
+            <label key={step.id} className="playbook-step">
+              <input
+                type="checkbox"
+                checked={!!checks[step.id]}
+                onChange={() => on_toggle_check(step.id)}
+              />
+              <div className="playbook-step-body">
+                <strong>{step.title}</strong>
+                <span className="playbook-instruction">{step.instruction}</span>
+                <span className="playbook-expected">Expect: {step.expected}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OpLogPanel({
+  entries,
+  open,
+  on_toggle,
+}: {
+  entries: OpEntry[];
+  open: boolean;
+  on_toggle: () => void;
+}) {
+  const container_ref = useRef<HTMLDivElement>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on entry change
+  useEffect(() => {
+    const el = container_ref.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [entries]);
+
+  return (
+    <div className="oplog-panel">
+      <button type="button" className="panel-toggle" onClick={on_toggle}>
+        {open ? "\u25BC" : "\u25B6"} Op Log ({entries.length})
+      </button>
+      {open && (
+        <div className="oplog-entries" ref={container_ref}>
+          {entries.map((entry, i) => (
+            <div key={`${entry.time}-${i}`} className="oplog-entry">
+              <span className="oplog-time">[{entry.time}]</span> {entry.message}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -259,8 +384,8 @@ function DebugPanel({
 
   return (
     <div className="debug-panel">
-      <button type="button" className="debug-toggle" onClick={on_toggle}>
-        {open ? "\u25BC" : "\u25B2"} Debug ({logs.length})
+      <button type="button" className="panel-toggle" onClick={on_toggle}>
+        {open ? "\u25BC" : "\u25B6"} Debug ({logs.length})
       </button>
       {open && (
         <div className="debug-log" ref={log_container_ref}>
