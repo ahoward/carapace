@@ -28,29 +28,105 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-cleanup() {
-  echo ""
-  echo "shutting down..."
+# ---------------------------------------------------------------------------
+#  Gatekeeper supervisor — auto-respawn with exponential backoff
+# ---------------------------------------------------------------------------
+SHUTTING_DOWN=false
+gk_pid=""
+vite_pid=""
 
-  # ask gatekeeper to shut down gracefully via HTTP first
-  curl -sf -X POST http://localhost:3001/control/shutdown >/dev/null 2>&1 || true
+GK_MAX_BACKOFF=16   # max seconds between respawn attempts
+GK_INITIAL_BACKOFF=1
 
-  # SIGTERM both processes
-  kill "$gk_pid" 2>/dev/null || true
-  kill "$vite_pid" 2>/dev/null || true
+start_gatekeeper() {
+  # kill any orphaned gatekeeper on port 3001 before starting
+  lsof -ti:3001 2>/dev/null | xargs kill -9 2>/dev/null || true
+  sleep 0.2
 
-  # give them 2 seconds to exit cleanly
+  bun run gatekeeper/src/index.ts &
+  gk_pid=$!
+}
+
+wait_for_gatekeeper() {
+  for _i in $(seq 1 20); do
+    curl -sf http://localhost:3001/health >/dev/null 2>&1 && return 0
+    sleep 0.25
+  done
+  return 1
+}
+
+# Supervisor loop: runs in background, restarts gatekeeper on unexpected exit
+supervise_gatekeeper() {
+  local backoff=$GK_INITIAL_BACKOFF
+
+  while true; do
+    # wait for the current gatekeeper process to exit
+    local exit_code=0
+    wait "$gk_pid" 2>/dev/null || exit_code=$?
+
+    # if we're shutting down, don't respawn
+    if $SHUTTING_DOWN; then
+      return
+    fi
+
+    echo ""
+    echo "  !! gatekeeper (pid $gk_pid) exited with code $exit_code — respawning in ${backoff}s..."
+    sleep "$backoff"
+
+    # double backoff up to max
+    if [[ $backoff -lt $GK_MAX_BACKOFF ]]; then
+      backoff=$((backoff * 2))
+      if [[ $backoff -gt $GK_MAX_BACKOFF ]]; then
+        backoff=$GK_MAX_BACKOFF
+      fi
+    fi
+
+    if $SHUTTING_DOWN; then
+      return
+    fi
+
+    echo "  ==> respawning gatekeeper"
+    start_gatekeeper
+
+    if wait_for_gatekeeper; then
+      echo "  gatekeeper back up (pid $gk_pid)"
+      backoff=$GK_INITIAL_BACKOFF  # reset backoff on successful start
+    else
+      echo "  WARNING: gatekeeper not responding after respawn"
+    fi
+  done
+}
+
+kill_pid() {
+  local pid="$1"
+  [[ -z "$pid" ]] && return
+
+  # SIGTERM
+  kill "$pid" 2>/dev/null || true
+
+  # wait up to 2 seconds
   local deadline=$((SECONDS + 2))
-  while kill -0 "$gk_pid" 2>/dev/null || kill -0 "$vite_pid" 2>/dev/null; do
+  while kill -0 "$pid" 2>/dev/null; do
     if [[ $SECONDS -ge $deadline ]]; then
       break
     fi
     sleep 0.1
   done
 
-  # SIGKILL anything still alive
-  kill -9 "$gk_pid" 2>/dev/null || true
-  kill -9 "$vite_pid" 2>/dev/null || true
+  # SIGKILL if still alive
+  kill -9 "$pid" 2>/dev/null || true
+}
+
+cleanup() {
+  SHUTTING_DOWN=true
+  echo ""
+  echo "shutting down..."
+
+  # ask gatekeeper to shut down gracefully via HTTP first
+  curl -sf -X POST http://localhost:3001/control/shutdown >/dev/null 2>&1 || true
+
+  kill_pid "$gk_pid"
+  kill_pid "$vite_pid"
   wait 2>/dev/null || true
 
   # kill any orphaned gatekeeper on port 3001
@@ -60,18 +136,13 @@ cleanup() {
 }
 
 if [[ "$mode" == "browser" ]]; then
+  trap cleanup EXIT INT TERM
+
   echo "==> starting gatekeeper on :3001"
-  bun run gatekeeper/src/index.ts &
-  gk_pid=$!
+  start_gatekeeper
 
-  # wait for gatekeeper to be ready (up to 5 seconds)
-  for i in $(seq 1 20); do
-    curl -sf http://localhost:3001/health >/dev/null 2>&1 && break
-    sleep 0.25
-  done
-
-  if curl -sf http://localhost:3001/health >/dev/null 2>&1; then
-    echo "  gatekeeper ready"
+  if wait_for_gatekeeper; then
+    echo "  gatekeeper ready (pid $gk_pid)"
   else
     echo "  WARNING: gatekeeper not responding on :3001"
   fi
@@ -80,14 +151,14 @@ if [[ "$mode" == "browser" ]]; then
   bun run dev &
   vite_pid=$!
 
-  trap cleanup EXIT INT TERM
-
   echo ""
   echo "  browser: http://localhost:1420"
   echo "  gatekeeper: http://localhost:3001"
+  echo "  (gatekeeper auto-respawns on crash)"
   echo ""
 
-  wait
+  # supervisor loop runs in foreground — keeps the script alive
+  supervise_gatekeeper
 else
   echo "==> cargo tauri dev"
   echo "  (gatekeeper is spawned by the rust backend)"
