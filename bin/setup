@@ -91,6 +91,28 @@ echo ""
 echo "==> cargo fetch (tauri dependencies)"
 cargo fetch --manifest-path src-tauri/Cargo.toml
 
+# fix cc pointing to ghostscript (both machines have ~/bin/cc = gs)
+if cc --version 2>&1 | grep -qi ghostscript; then
+  echo ""
+  echo "==> fixing cc (cc points to ghostscript, not a C compiler)"
+  mkdir -p .cargo
+  if [[ "$(uname)" == "Darwin" ]]; then
+    cat > .cargo/config.toml <<'TOML'
+[target.aarch64-apple-darwin]
+linker = "/usr/bin/cc"
+
+[target.x86_64-apple-darwin]
+linker = "/usr/bin/cc"
+TOML
+  else
+    cat > .cargo/config.toml <<'TOML'
+[target.x86_64-unknown-linux-gnu]
+linker = "/usr/bin/gcc"
+TOML
+  fi
+  echo "  wrote .cargo/config.toml (points cargo at the real compiler)"
+fi
+
 # linux: verify system libs tauri needs
 if [[ "$(uname)" == "Linux" ]]; then
   echo ""
@@ -106,18 +128,6 @@ if [[ "$(uname)" == "Linux" ]]; then
     echo "  install with: sudo apt-get install -y ${missing[*]}"
   else
     echo "  all present"
-  fi
-
-  # fix ghostscript-as-cc if needed
-  if cc --version 2>&1 | grep -qi ghostscript; then
-    echo ""
-    echo "==> fixing linker (cc points to ghostscript)"
-    mkdir -p .cargo
-    cat > .cargo/config.toml <<'TOML'
-[target.x86_64-unknown-linux-gnu]
-linker = "/usr/bin/gcc"
-TOML
-    echo "  wrote .cargo/config.toml"
   fi
 fi
 
