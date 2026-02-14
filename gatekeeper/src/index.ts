@@ -17,38 +17,60 @@ mkdirSync(PRIVATE_VAULT, { recursive: true });
 let current_mode: Mode = "LOCAL";
 const start_time = Date.now();
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function with_cors(response: Response): Response {
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
 const server = Bun.serve({
   port: PORT,
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
+    // CORS preflight
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
     if (url.pathname === "/health" && request.method === "GET") {
-      return handle_health(url.pathname, current_mode, start_time);
+      return with_cors(handle_health(url.pathname, current_mode, start_time));
     }
 
     if (url.pathname === "/control/set-mode") {
-      return handle_set_mode(
-        request,
-        url.pathname,
-        () => current_mode,
-        (mode) => {
-          current_mode = mode;
-        },
+      return with_cors(
+        await handle_set_mode(
+          request,
+          url.pathname,
+          () => current_mode,
+          (mode) => {
+            current_mode = mode;
+          },
+        ),
       );
     }
 
     if (url.pathname === "/tools/fs/read" && request.method === "GET") {
-      return handle_fs_read(url, current_mode);
+      return with_cors(await handle_fs_read(url, current_mode));
     }
 
     if (url.pathname === "/tools/fs/list" && request.method === "GET") {
-      return handle_fs_list(url.pathname, current_mode);
+      return with_cors(handle_fs_list(url.pathname, current_mode));
     }
 
     const start = Date.now();
-    return Response.json(make_error(url.pathname, start, { route: ["not found"] }), {
-      status: 404,
-    });
+    return with_cors(
+      Response.json(make_error(url.pathname, start, { route: ["not found"] }), {
+        status: 404,
+      }),
+    );
   },
 });
 

@@ -1,21 +1,36 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type FileEntry,
+  type Mode,
+  type ResultEnvelope,
+  check_health,
+  fetch_file_list,
+  set_mode as set_gk_mode,
+} from "./lib/gatekeeper_client";
 
 const GATEKEEPER_URL = "http://localhost:3001";
 
-type Mode = "LOCAL" | "CLOUD";
 type GatekeeperStatus = "running" | "stopped" | "unknown";
+type LogLevel = "info" | "error" | "warn";
 
-interface FileEntry {
-  name: string;
-  kind: "file" | "directory";
-  size: number;
+interface LogEntry {
+  time: string;
+  level: LogLevel;
+  message: string;
 }
 
-interface ResultEnvelope<T> {
-  status: "success" | "error";
-  result: T | null;
-  errors: Record<string, string[]> | null;
+const MAX_LOG_ENTRIES = 100;
+
+function format_time(): string {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map((n) => String(n).padStart(2, "0"))
+    .join(":");
+}
+
+function log_level_for_envelope(envelope: ResultEnvelope<unknown>): LogLevel {
+  return envelope.status === "success" ? "info" : "error";
 }
 
 function App() {
@@ -24,49 +39,73 @@ function App() {
   const [files, set_files] = useState<FileEntry[]>([]);
   const [message, set_message] = useState<string>("");
   const [loading, set_loading] = useState(false);
+  const [logs, set_logs] = useState<LogEntry[]>([]);
+  const [debug_open, set_debug_open] = useState(true);
 
   const is_tauri = "__TAURI_INTERNALS__" in window;
+
+  const add_log = useCallback((level: LogLevel, message: string) => {
+    set_logs((prev) => {
+      const entry: LogEntry = { time: format_time(), level, message };
+      const next = [...prev, entry];
+      return next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
+    });
+  }, []);
 
   const fetch_status = useCallback(async () => {
     if (is_tauri) {
       try {
         const result = await invoke<string>("gatekeeper_status");
         set_gk_status(result as GatekeeperStatus);
-      } catch {
+        add_log("info", `tauri gatekeeper_status → ${result}`);
+      } catch (err) {
         set_gk_status("unknown");
+        add_log("error", `tauri gatekeeper_status → ${err}`);
       }
     } else {
-      try {
-        const response = await fetch(`${GATEKEEPER_URL}/health`);
-        if (response.ok) {
-          set_gk_status("running");
-        } else {
-          set_gk_status("stopped");
-        }
-      } catch {
+      const envelope = await check_health(GATEKEEPER_URL);
+      const level = log_level_for_envelope(envelope);
+      if (envelope.status === "success") {
+        set_gk_status("running");
+        add_log(
+          level,
+          `GET /health → ${envelope.result?.mode} uptime=${envelope.result?.uptime_ms}ms`,
+        );
+      } else {
         set_gk_status("stopped");
+        const err_msg = envelope.errors
+          ? Object.values(envelope.errors).flat().join(", ")
+          : "unknown error";
+        add_log(level, `GET /health → ${err_msg}`);
       }
     }
-  }, [is_tauri]);
+  }, [is_tauri, add_log]);
 
   const fetch_files = useCallback(async () => {
-    try {
-      const response = await fetch(`${GATEKEEPER_URL}/tools/fs/list`);
-      const envelope: ResultEnvelope<{ mode: Mode; files: FileEntry[] }> = await response.json();
-      if (envelope.status === "success" && envelope.result !== null) {
-        set_mode(envelope.result.mode);
-        set_files(envelope.result.files);
-      }
-    } catch {
+    const envelope = await fetch_file_list(GATEKEEPER_URL);
+    const level = log_level_for_envelope(envelope);
+    if (envelope.status === "success" && envelope.result !== null) {
+      set_mode(envelope.result.mode);
+      set_files(envelope.result.files);
+      add_log(
+        level,
+        `GET /tools/fs/list → ${envelope.result.files.length} files (${envelope.result.mode})`,
+      );
+    } else {
       set_files([]);
+      const err_msg = envelope.errors
+        ? Object.values(envelope.errors).flat().join(", ")
+        : "unknown error";
+      add_log(level, `GET /tools/fs/list → ${err_msg}`);
     }
-  }, []);
+  }, [add_log]);
 
   useEffect(() => {
+    add_log("info", "app started, polling gatekeeper...");
     fetch_status();
     const interval = setInterval(fetch_status, 2000);
     return () => clearInterval(interval);
-  }, [fetch_status]);
+  }, [fetch_status, add_log]);
 
   useEffect(() => {
     if (gk_status === "running") {
@@ -81,14 +120,18 @@ function App() {
       if (is_tauri) {
         const result = await invoke<string>("start_gatekeeper");
         set_message(result);
+        add_log("info", `start_gatekeeper → ${result}`);
       } else {
-        set_message("start gatekeeper manually: bun run gatekeeper/src/index.ts");
+        const msg = "start gatekeeper manually: bun run gatekeeper/src/index.ts";
+        set_message(msg);
+        add_log("warn", msg);
       }
       await new Promise((r) => setTimeout(r, 1000));
       await fetch_status();
       await fetch_files();
     } catch (err) {
       set_message(String(err));
+      add_log("error", `start_gatekeeper → ${err}`);
     }
     set_loading(false);
   };
@@ -100,39 +143,46 @@ function App() {
       if (is_tauri) {
         const result = await invoke<string>("stop_gatekeeper");
         set_message(result);
+        add_log("info", `stop_gatekeeper → ${result}`);
       } else {
-        set_message("stop gatekeeper manually (ctrl+c the process)");
+        const msg = "stop gatekeeper manually (ctrl+c the process)";
+        set_message(msg);
+        add_log("warn", msg);
       }
       await fetch_status();
       set_files([]);
     } catch (err) {
       set_message(String(err));
+      add_log("error", `stop_gatekeeper → ${err}`);
     }
     set_loading(false);
   };
 
   const handle_toggle_mode = async () => {
     const new_mode: Mode = mode === "LOCAL" ? "CLOUD" : "LOCAL";
-    try {
-      const response = await fetch(`${GATEKEEPER_URL}/control/set-mode`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: new_mode }),
-      });
-      const envelope: ResultEnvelope<{ current_mode: Mode }> = await response.json();
-      if (envelope.status === "success" && envelope.result !== null) {
-        set_mode(envelope.result.current_mode);
-        await fetch_files();
-      }
-    } catch (err) {
-      set_message(String(err));
+    add_log("info", `POST /control/set-mode → requesting ${new_mode}`);
+    const envelope = await set_gk_mode(GATEKEEPER_URL, new_mode);
+    const level = log_level_for_envelope(envelope);
+    if (envelope.status === "success" && envelope.result !== null) {
+      set_mode(envelope.result.current_mode);
+      add_log(
+        level,
+        `POST /control/set-mode → ${envelope.result.previous_mode} → ${envelope.result.current_mode}`,
+      );
+      await fetch_files();
+    } else {
+      const err_msg = envelope.errors
+        ? Object.values(envelope.errors).flat().join(", ")
+        : "unknown error";
+      set_message(err_msg);
+      add_log(level, `POST /control/set-mode → ${err_msg}`);
     }
   };
 
   return (
     <main>
       <h1>Carapace</h1>
-      <p>Phase 0 — Spike</p>
+      <p>Phase 1A — Gatekeeper</p>
 
       <div className={`status ${gk_status === "running" ? "running" : "stopped"}`}>
         Gatekeeper: {gk_status}
@@ -160,9 +210,9 @@ function App() {
           <ul className="file-list">
             {files.map((f) => (
               <li key={f.name}>
-                {f.kind === "directory" ? "📁" : "📄"} {f.name}
+                {f.kind === "directory" ? "\u{1F4C1}" : "\u{1F4C4}"} {f.name}
                 {f.kind === "file" ? ` (${f.size}B)` : ""}
-                {f.name.startsWith("private/") ? " 🔒" : ""}
+                {f.name.startsWith("private/") ? " \u{1F512}" : ""}
               </li>
             ))}
           </ul>
@@ -174,7 +224,44 @@ function App() {
           <code>{message}</code>
         </p>
       )}
+
+      <DebugPanel logs={logs} open={debug_open} on_toggle={() => set_debug_open(!debug_open)} />
     </main>
+  );
+}
+
+function DebugPanel({
+  logs,
+  open,
+  on_toggle,
+}: {
+  logs: LogEntry[];
+  open: boolean;
+  on_toggle: () => void;
+}) {
+  const log_container_ref = useRef<HTMLDivElement>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on log change
+  useEffect(() => {
+    const el = log_container_ref.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [logs]);
+
+  return (
+    <div className="debug-panel">
+      <button type="button" className="debug-toggle" onClick={on_toggle}>
+        {open ? "\u25BC" : "\u25B2"} Debug ({logs.length})
+      </button>
+      {open && (
+        <div className="debug-log" ref={log_container_ref}>
+          {logs.map((entry, i) => (
+            <div key={`${entry.time}-${i}`} className={`debug-entry debug-${entry.level}`}>
+              <span className="debug-time">[{entry.time}]</span> {entry.message}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
