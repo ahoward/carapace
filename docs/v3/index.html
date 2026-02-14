@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CARAPACE — Your AI. Your data. Your shell.</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --black:#0a0a0a;--green:#00ff41;--red:#ff2d2d;--white:#e0e0e0;
+  --dim:#555;--bg:#0a0a0a;--mono:'Courier New',Courier,monospace;
+}
+html{font-size:16px;scroll-behavior:smooth}
+body{
+  background:var(--black);color:var(--white);font-family:var(--mono);
+  line-height:1.6;overflow-x:hidden;
+}
+a{color:var(--green);text-decoration:none;border-bottom:1px solid var(--green)}
+a:hover{background:var(--green);color:var(--black)}
+
+.container{max-width:900px;margin:0 auto;padding:0 2rem}
+
+nav{
+  border-bottom:2px solid var(--green);padding:1rem 0;
+  display:flex;justify-content:space-between;align-items:center;
+}
+nav .back{font-size:0.9rem;text-transform:uppercase;letter-spacing:0.1em}
+nav .version{color:var(--dim);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.15em}
+
+.hero{
+  text-align:center;padding:6rem 0 4rem;
+  border-bottom:2px solid var(--dim);
+}
+.hero svg{max-width:320px;width:100%;height:auto;margin-bottom:3rem}
+.hero h1{
+  font-size:clamp(2.5rem,8vw,5rem);font-weight:900;
+  letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--white);margin-bottom:1rem;
+}
+.hero .tagline{
+  font-size:clamp(1rem,3vw,1.4rem);color:var(--green);
+  font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+  margin-bottom:1.5rem;
+}
+.hero .oneliner{
+  font-size:1rem;color:var(--dim);max-width:600px;margin:0 auto;
+}
+
+section{padding:4rem 0;border-bottom:1px solid #222}
+section h2{
+  font-size:clamp(1.5rem,4vw,2.2rem);font-weight:900;
+  text-transform:uppercase;letter-spacing:0.1em;
+  margin-bottom:2rem;color:var(--white);
+}
+section h2 span{color:var(--green)}
+
+.problem-list{list-style:none}
+.problem-list li{
+  padding:1rem 0;border-bottom:1px solid #1a1a1a;
+  font-size:1.05rem;
+}
+.problem-list li strong{color:var(--red)}
+.problem-list li em{color:var(--dim);font-style:normal}
+
+.toggle-block{
+  border:2px solid var(--green);padding:2rem;margin:1.5rem 0;
+  background:#0d1a0d;
+}
+.toggle-block h3{
+  color:var(--green);font-size:1.2rem;margin-bottom:0.8rem;
+  text-transform:uppercase;letter-spacing:0.1em;
+}
+.toggle-block p{color:var(--white);font-size:0.95rem}
+.toggle-block.cloud{border-color:var(--red);background:#1a0d0d}
+.toggle-block.cloud h3{color:var(--red)}
+.solution-footer{
+  margin-top:2rem;font-size:1.1rem;color:var(--white);
+  font-weight:700;
+}
+
+.arch-diagram{
+  background:#111;border:1px solid #333;padding:2rem;
+  overflow-x:auto;font-size:clamp(0.6rem,1.5vw,0.85rem);
+  line-height:1.4;color:var(--green);white-space:pre;
+  margin-top:1rem;
+}
+
+.stack-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+  gap:1rem;margin-top:1rem;
+}
+.stack-item{
+  border:1px solid #333;padding:1.2rem;background:#111;
+}
+.stack-item .layer{
+  color:var(--green);font-size:0.8rem;text-transform:uppercase;
+  letter-spacing:0.15em;margin-bottom:0.4rem;
+}
+.stack-item .tech{font-weight:700;font-size:1.05rem;margin-bottom:0.3rem}
+.stack-item .why{color:var(--dim);font-size:0.85rem}
+
+.cta{text-align:center;padding:5rem 0}
+.cta a{
+  display:inline-block;border:3px solid var(--green);
+  padding:1.2rem 3rem;font-size:1.2rem;font-weight:900;
+  text-transform:uppercase;letter-spacing:0.15em;
+  color:var(--green);background:transparent;
+  border-bottom:3px solid var(--green);
+}
+.cta a:hover{background:var(--green);color:var(--black)}
+
+footer{
+  border-top:2px solid var(--dim);padding:3rem 0;text-align:center;
+}
+footer blockquote{
+  font-size:1rem;color:var(--dim);font-style:italic;
+  max-width:600px;margin:0 auto 1.5rem;
+}
+footer .copy{font-size:0.8rem;color:#333}
+</style>
+</head>
+<body>
+
+<div class="container">
+<nav>
+  <a href="../" class="back">&larr; All Versions</a>
+  <span class="version">V3 / Armored Hexagon Circuit</span>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" aria-label="Carapace Logo — Armored Hexagon Circuit">
+    <!-- Central armored hexagon -->
+    <polygon points="200,60 320,130 320,270 200,340 80,270 80,130"
+      fill="none" stroke="#e0e0e0" stroke-width="3" stroke-linejoin="bevel"/>
+    <!-- Inner hexagon (the core) -->
+    <polygon points="200,120 260,150 260,250 200,280 140,250 140,150"
+      fill="none" stroke="#00ff41" stroke-width="2" stroke-linejoin="bevel"/>
+    <!-- Circuit traces radiating outward — top -->
+    <line x1="200" y1="60" x2="200" y2="10" stroke="#00ff41" stroke-width="1.5"/>
+    <circle cx="200" cy="10" r="4" fill="none" stroke="#00ff41" stroke-width="1.5"/>
+    <!-- Top-right trace -->
+    <line x1="320" y1="130" x2="360" y2="105" stroke="#00ff41" stroke-width="1.5"/>
+    <line x1="360" y1="105" x2="390" y2="105" stroke="#00ff41" stroke-width="1.5"/>
+    <circle cx="390" cy="105" r="4" fill="none" stroke="#00ff41" stroke-width="1.5"/>
+    <!-- Bottom-right trace -->
+    <line x1="320" y1="270" x2="360" y2="295" stroke="#00ff41" stroke-width="1.5"/>
+    <line x1="360" y1="295" x2="360" y2="330" stroke="#00ff41" stroke-width="1.5"/>
+    <circle cx="360" cy="330" r="4" fill="none" stroke="#00ff41" stroke-width="1.5"/>
+    <!-- Bottom trace -->
+    <line x1="200" y1="340" x2="200" y2="390" stroke="#00ff41" stroke-width="1.5"/>
+    <circle cx="200" cy="390" r="4" fill="none" stroke="#00ff41" stroke-width="1.5"/>
+    <!-- Bottom-left trace -->
+    <line x1="80" y1="270" x2="40" y2="295" stroke="#00ff41" stroke-width="1.5"/>
+    <line x1="40" y1="295" x2="40" y2="330" stroke="#00ff41" stroke-width="1.5"/>
+    <circle cx="40" cy="330" r="4" fill="none" stroke="#00ff41" stroke-width="1.5"/>
+    <!-- Top-left trace -->
+    <line x1="80" y1="130" x2="40" y2="105" stroke="#00ff41" stroke-width="1.5"/>
+    <line x1="40" y1="105" x2="10" y2="105" stroke="#00ff41" stroke-width="1.5"/>
+    <circle cx="10" cy="105" r="4" fill="none" stroke="#00ff41" stroke-width="1.5"/>
+    <!-- Cross-connections inside hex — biology meets silicon -->
+    <line x1="200" y1="120" x2="200" y2="280" stroke="#00ff41" stroke-width="0.8" opacity="0.4"/>
+    <line x1="140" y1="150" x2="260" y2="250" stroke="#00ff41" stroke-width="0.8" opacity="0.4"/>
+    <line x1="260" y1="150" x2="140" y2="250" stroke="#00ff41" stroke-width="0.8" opacity="0.4"/>
+    <!-- Central node -->
+    <circle cx="200" cy="200" r="8" fill="none" stroke="#00ff41" stroke-width="2"/>
+    <circle cx="200" cy="200" r="3" fill="#00ff41"/>
+    <!-- Secondary circuit nodes on inner hex vertices -->
+    <circle cx="200" cy="120" r="3" fill="#00ff41"/>
+    <circle cx="260" cy="150" r="3" fill="#00ff41"/>
+    <circle cx="260" cy="250" r="3" fill="#00ff41"/>
+    <circle cx="200" cy="280" r="3" fill="#00ff41"/>
+    <circle cx="140" cy="250" r="3" fill="#00ff41"/>
+    <circle cx="140" cy="150" r="3" fill="#00ff41"/>
+    <!-- Corner accent marks — armored bolts -->
+    <rect x="195" y="55" width="10" height="10" fill="none" stroke="#e0e0e0" stroke-width="1" opacity="0.4" transform="rotate(45,200,60)"/>
+    <rect x="315" y="125" width="10" height="10" fill="none" stroke="#e0e0e0" stroke-width="1" opacity="0.4" transform="rotate(45,320,130)"/>
+    <rect x="315" y="265" width="10" height="10" fill="none" stroke="#e0e0e0" stroke-width="1" opacity="0.4" transform="rotate(45,320,270)"/>
+    <rect x="195" y="335" width="10" height="10" fill="none" stroke="#e0e0e0" stroke-width="1" opacity="0.4" transform="rotate(45,200,340)"/>
+    <rect x="75" y="265" width="10" height="10" fill="none" stroke="#e0e0e0" stroke-width="1" opacity="0.4" transform="rotate(45,80,270)"/>
+    <rect x="75" y="125" width="10" height="10" fill="none" stroke="#e0e0e0" stroke-width="1" opacity="0.4" transform="rotate(45,80,130)"/>
+  </svg>
+
+  <h1>Carapace</h1>
+  <div class="tagline">Your AI. Your data. Your shell.</div>
+  <p class="oneliner">A zero-config desktop app that deploys AI on your own private cloud — with a kill switch between your brain and theirs.</p>
+</div>
+
+<!-- THE PROBLEM -->
+<section>
+  <h2><span>//</span> The Problem</h2>
+  <ul class="problem-list">
+    <li><strong>Cloud AI</strong> (Claude, GPT) = smart but sees everything you send it</li>
+    <li><strong>Local AI</strong> (Ollama, llama.cpp) = private but dumber</li>
+    <li><strong>Self-hosting</strong> = powerful but requires a DevOps degree</li>
+  </ul>
+  <p style="margin-top:1.5rem;font-size:1.1rem;font-weight:700">Pick two? No. <span style="color:var(--green)">Pick all three.</span></p>
+</section>
+
+<!-- THE SOLUTION -->
+<section>
+  <h2><span>//</span> The Solution</h2>
+  <p style="margin-bottom:1.5rem">Carapace gives you a <strong style="color:var(--green)">privacy toggle</strong>:</p>
+
+  <div class="toggle-block">
+    <h3>[ Local Mode ]</h3>
+    <p>Your data + local model. Full access. Full privacy. Ollama on your VPS. Nothing leaves.</p>
+  </div>
+
+  <div class="toggle-block cloud">
+    <h3>[ Cloud Mode ]</h3>
+    <p>Your data is LOCKED. Cloud model sees public data only. The Gatekeeper blocks everything else. At the API level. Not a pinky promise.</p>
+  </div>
+
+  <p class="solution-footer">One click to launch. One click to switch. One click to destroy.</p>
+</section>
+
+<!-- ARCHITECTURE -->
+<section>
+  <h2><span>//</span> Architecture</h2>
+  <div class="arch-diagram">┌─ YOU ──────────────────────────────────────────────────┐
+│                                                        │
+│  ~/OpenClaw/Private/   ← YOUR source of truth          │
+│  ~/OpenClaw/Public/    ← safe to share                 │
+│                                                        │
+│  [Carapace Desktop]                                    │
+│     ├── Launch Server    ← one click                   │
+│     ├── Privacy Toggle   ← LOCAL / CLOUD               │
+│     └── Destroy Server   ← nuke from orbit             │
+│                                                        │
+└──────────────┬─────────────────────────────────────────┘
+               │ Tailscale (encrypted mesh, no open ports)
+┌──────────────▼─────────────────────────────────────────┐
+│  YOUR VPS (ephemeral compute — destroy anytime)        │
+│                                                        │
+│  ┌──────────────────────────────────────────────┐      │
+│  │ GATEKEEPER (FastAPI)                         │      │
+│  │                                              │      │
+│  │  LOCAL MODE:  /private ✅  /public ✅         │      │
+│  │  CLOUD MODE:  /private 🚫  /public ✅         │      │
+│  │                                              │      │
+│  │  crash = fail secure (private locked)        │      │
+│  └──────────────┬───────────────────────────────┘      │
+│                 │                                      │
+│  ┌──────────────▼──────┐  ┌────────────────────┐      │
+│  │ OpenClaw Agent      │  │ Ollama             │      │
+│  │ (no volume mounts)  │  │ (local inference)  │      │
+│  │ (reads via API only)│  │ (your models)      │      │
+│  └─────────────────────┘  └────────────────────┘      │
+│                                                        │
+└────────────────────────────────────────────────────────┘</div>
+</section>
+
+<!-- TECH STACK -->
+<section>
+  <h2><span>//</span> Tech Stack</h2>
+  <div class="stack-grid">
+    <div class="stack-item">
+      <div class="layer">Desktop</div>
+      <div class="tech">Tauri 2.x + React + TypeScript</div>
+      <div class="why">Native performance, tiny bundle, not Electron</div>
+    </div>
+    <div class="stack-item">
+      <div class="layer">Gatekeeper</div>
+      <div class="tech">Python / FastAPI</div>
+      <div class="why">The security boundary. Testable standalone.</div>
+    </div>
+    <div class="stack-item">
+      <div class="layer">Infrastructure</div>
+      <div class="tech">SkyPilot</div>
+      <div class="why">One API for every cloud. You pick the provider.</div>
+    </div>
+    <div class="stack-item">
+      <div class="layer">Networking</div>
+      <div class="tech">Tailscale</div>
+      <div class="why">Encrypted mesh. Zero config. No open ports.</div>
+    </div>
+    <div class="stack-item">
+      <div class="layer">VPS Runtime</div>
+      <div class="tech">Docker Compose</div>
+      <div class="why">OpenClaw + Ollama + Gatekeeper in containers</div>
+    </div>
+    <div class="stack-item">
+      <div class="layer">Local AI</div>
+      <div class="tech">Ollama</div>
+      <div class="why">Ships with a default model. Swap in whatever you want.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta">
+  <a href="https://github.com/ahoward/carapace">View on GitHub &rarr;</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <blockquote>"The cloud is someone else's computer. Your data should never be on someone else's computer. Unless you put it there. And you can take it back. Instantly."</blockquote>
+  <div class="copy">CARAPACE — Privacy by default. Fail secure, not fail open.</div>
+</footer>
+
+</div>
+</body>
+</html>
