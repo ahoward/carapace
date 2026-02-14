@@ -1,4 +1,5 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { make_envelope, make_error } from "./envelope";
 import { handle_set_mode } from "./handlers/control";
 import { handle_fs_list } from "./handlers/fs_list";
@@ -12,6 +13,31 @@ const PORT = Number(process.env.GATEKEEPER_PORT) || 3001;
 // ensure vault directories exist
 mkdirSync(PUBLIC_VAULT, { recursive: true });
 mkdirSync(PRIVATE_VAULT, { recursive: true });
+
+// seed vault with sample data if empty (first run on a fresh checkout)
+function seed_if_empty(vault: string, files: Record<string, string>) {
+  try {
+    if (readdirSync(vault).length === 0) {
+      for (const [name, content] of Object.entries(files)) {
+        const file_path = path.join(vault, name);
+        mkdirSync(path.dirname(file_path), { recursive: true });
+        writeFileSync(file_path, content);
+      }
+      console.log(`seeded ${vault} with ${Object.keys(files).length} sample files`);
+    }
+  } catch {}
+}
+
+seed_if_empty(PUBLIC_VAULT, {
+  "readme.txt":
+    "This is the public vault. Files here are accessible in both LOCAL and CLOUD modes.\n",
+  "hello.txt": "Hello from Carapace!\n",
+});
+
+seed_if_empty(PRIVATE_VAULT, {
+  "secrets.txt": "This is the private vault. Files here are only accessible in LOCAL mode.\n",
+  "notes.txt": "Private notes — blocked in CLOUD mode.\n",
+});
 
 // in-memory state
 let current_mode: Mode = "LOCAL";
