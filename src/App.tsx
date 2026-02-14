@@ -9,7 +9,7 @@ type GatekeeperStatus = "running" | "stopped" | "unknown";
 interface FileEntry {
   name: string;
   kind: "file" | "directory";
-  private: boolean;
+  size: number;
 }
 
 interface ResultEnvelope<T> {
@@ -161,7 +161,8 @@ function App() {
             {files.map((f) => (
               <li key={f.name}>
                 {f.kind === "directory" ? "📁" : "📄"} {f.name}
-                {f.private ? " 🔒" : ""}
+                {f.kind === "file" ? ` (${f.size}B)` : ""}
+                {f.name.startsWith("private/") ? " 🔒" : ""}
               </li>
             ))}
           </ul>

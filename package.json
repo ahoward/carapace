@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "lint": "biome lint ./src ./gatekeeper/src",
     "format": "biome format --write ./src ./gatekeeper/src",
-    "check": "biome check ./src ./gatekeeper/src"
+    "check": "biome check ./src ./gatekeeper/src",
+    "test": "bun test --cwd gatekeeper"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

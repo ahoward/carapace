@@ -43,14 +43,14 @@ Carapace is a zero-configuration desktop application that wraps OpenClaw, enabli
 
 **Goal:** One user can launch a VPS, toggle Local/Cloud mode, and see the Gatekeeper enforce data boundaries. Ugly is fine. It works end-to-end.
 
-### 1A — Gatekeeper Middleware (Bun/TypeScript)
+### 1A — Gatekeeper Middleware (Bun/TypeScript) ✓
 
-- [ ] Implement `/control/set-mode` endpoint (LOCAL / CLOUD)
-- [ ] Implement `/tools/fs/read` with mode-based access control
-- [ ] Implement `/tools/fs/list` with mode-based file visibility
-- [ ] Path traversal sanitization and security hardening
-- [ ] Dockerfile for the Gatekeeper service
-- [ ] Integration tests: Cloud mode blocks private data, Local mode allows it
+- [x] Implement `/control/set-mode` endpoint (LOCAL / CLOUD)
+- [x] Implement `/tools/fs/read` with mode-based access control
+- [x] Implement `/tools/fs/list` with mode-based file visibility
+- [x] Path traversal sanitization and security hardening
+- [x] Dockerfile for the Gatekeeper service
+- [x] Integration tests: Cloud mode blocks private data, Local mode allows it
 
 ### 1B — SkyPilot Provisioning
 
