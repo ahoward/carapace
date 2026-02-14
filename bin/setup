@@ -5,17 +5,34 @@ cd "$(dirname "$0")/.."
 
 echo "==> checking prerequisites"
 
-require() {
-  if ! command -v "$1" &>/dev/null; then
-    echo "FATAL: $1 not found — $2" >&2
-    exit 1
+ensure_bun() {
+  if command -v bun &>/dev/null; then
+    printf "  %-12s %s\n" "bun" "$(command -v bun)"
+    return
   fi
-  printf "  %-12s %s\n" "$1" "$(command -v "$1")"
+  echo "  bun not found — installing..."
+  curl -fsSL https://bun.sh/install | bash
+  # source the env so bun is available in this session
+  export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
+  export PATH="$BUN_INSTALL/bin:$PATH"
+  printf "  %-12s %s\n" "bun" "$(command -v bun)"
 }
 
-require bun    "https://bun.sh"
-require rustc  "https://rustup.rs"
-require cargo  "https://rustup.rs"
+ensure_rust() {
+  if command -v rustc &>/dev/null && command -v cargo &>/dev/null; then
+    printf "  %-12s %s\n" "rustc" "$(command -v rustc)"
+    printf "  %-12s %s\n" "cargo" "$(command -v cargo)"
+    return
+  fi
+  echo "  rust not found — installing via rustup..."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --quiet
+  source "$HOME/.cargo/env"
+  printf "  %-12s %s\n" "rustc" "$(command -v rustc)"
+  printf "  %-12s %s\n" "cargo" "$(command -v cargo)"
+}
+
+ensure_bun
+ensure_rust
 
 echo ""
 echo "==> bun install"
