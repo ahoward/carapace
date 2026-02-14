@@ -31,11 +31,11 @@ Carapace is a zero-configuration desktop application that wraps OpenClaw, enabli
 
 **Goal:** Project scaffolding, tooling, and the thinnest possible proof that all layers connect.
 
-- [ ] Initialize Tauri + React/TS project structure
-- [ ] Set up build tooling (Vite, TypeScript, Rust/Tauri backend)
-- [ ] Define project conventions (linting, formatting, testing, CI)
-- [ ] Establish constitution and spec-kit workflow
-- [ ] Spike: Tauri → Bun child process communication (for SkyPilot/Gatekeeper)
+- [x] Initialize Tauri + React/TS project structure
+- [x] Set up build tooling (Vite, TypeScript, Rust/Tauri backend)
+- [x] Define project conventions (linting, formatting — Biome)
+- [x] Establish constitution and spec-kit workflow
+- [x] Spike: Tauri → Bun child process communication (for SkyPilot/Gatekeeper)
 
 ---
 
@@ -129,6 +129,7 @@ Carapace is a zero-configuration desktop application that wraps OpenClaw, enabli
 - [ ] Documentation: user guide, architecture overview
 - [ ] Performance: file_mounts latency for large datasets (500MB+)
 - [ ] Telemetry (opt-in) for debugging deployment issues
+- [ ] Bundle Gatekeeper as Tauri sidecar binary (currently spawned via `bun run`)
 
 ---
 

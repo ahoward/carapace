@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "==> checking prerequisites"
+
+require() {
+  if ! command -v "$1" &>/dev/null; then
+    echo "FATAL: $1 not found — $2" >&2
+    exit 1
+  fi
+  printf "  %-12s %s\n" "$1" "$(command -v "$1")"
+}
+
+require bun    "https://bun.sh"
+require rustc  "https://rustup.rs"
+require cargo  "https://rustup.rs"
+
+echo ""
+echo "==> bun install"
+bun install
+
+echo ""
+echo "==> cargo fetch (tauri dependencies)"
+cargo fetch --manifest-path src-tauri/Cargo.toml
+
+# linux: verify system libs tauri needs
+if [[ "$(uname)" == "Linux" ]]; then
+  echo ""
+  echo "==> checking linux system libraries"
+  missing=()
+  for pkg in libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev; do
+    if ! dpkg -s "$pkg" &>/dev/null; then
+      missing+=("$pkg")
+    fi
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "  missing: ${missing[*]}"
+    echo "  install with: sudo apt-get install -y ${missing[*]}"
+  else
+    echo "  all present"
+  fi
+
+  # fix ghostscript-as-cc if needed
+  if cc --version 2>&1 | grep -qi ghostscript; then
+    echo ""
+    echo "==> fixing linker (cc points to ghostscript)"
+    mkdir -p .cargo
+    cat > .cargo/config.toml <<'TOML'
+[target.x86_64-unknown-linux-gnu]
+linker = "/usr/bin/gcc"
+TOML
+    echo "  wrote .cargo/config.toml"
+  fi
+fi
+
+echo ""
+echo "==> verifying rust build"
+cargo check --manifest-path src-tauri/Cargo.toml 2>&1 | tail -1
+
+echo ""
+echo "==> verifying gatekeeper"
+timeout 3 bun run gatekeeper/src/index.ts &
+gk_pid=$!
+sleep 1
+if curl -sf http://localhost:3001/health >/dev/null 2>&1; then
+  echo "  gatekeeper ok"
+else
+  echo "  gatekeeper failed to start"
+fi
+kill "$gk_pid" 2>/dev/null || true
+wait "$gk_pid" 2>/dev/null || true
+
+echo ""
+echo "done. run ./bin/dev to start developing."

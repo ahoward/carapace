@@ -1,2 +1,19 @@
 .envrc
 .claude/settings.local.json.backup.*
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+
+# Bun
+bun.lock
+
+# Cargo (machine-specific linker config)
+/.cargo/
+
+# OS
+.DS_Store
+Thumbs.db

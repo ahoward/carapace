@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+usage() {
+  cat <<EOF
+usage: ./bin/dev [--browser | --desktop]
+
+  --browser   vite dev server + gatekeeper (default)
+  --desktop   cargo tauri dev (spawns gatekeeper from rust)
+EOF
+  exit 1
+}
+
+mode="browser"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --browser)  mode="browser"; shift ;;
+    --desktop)  mode="desktop"; shift ;;
+    -h|--help)  usage ;;
+    *)          echo "unknown flag: $1" >&2; usage ;;
+  esac
+done
+
+cleanup() {
+  echo ""
+  echo "shutting down..."
+  kill "$gk_pid" 2>/dev/null || true
+  kill "$vite_pid" 2>/dev/null || true
+  wait 2>/dev/null || true
+}
+
+if [[ "$mode" == "browser" ]]; then
+  echo "==> starting gatekeeper on :3001"
+  bun run gatekeeper/src/index.ts &
+  gk_pid=$!
+
+  echo "==> starting vite on :1420"
+  bun run dev &
+  vite_pid=$!
+
+  trap cleanup EXIT INT TERM
+
+  echo ""
+  echo "  browser: http://localhost:1420"
+  echo "  gatekeeper: http://localhost:3001"
+  echo ""
+
+  wait
+else
+  echo "==> cargo tauri dev"
+  echo "  (gatekeeper is spawned by the rust backend)"
+  echo ""
+  cargo tauri dev
+fi
