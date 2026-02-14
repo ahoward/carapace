@@ -111,6 +111,8 @@ linker = "/usr/bin/gcc"
 TOML
   fi
   echo "  wrote .cargo/config.toml (points cargo at the real compiler)"
+  echo "  cleaning cargo cache to pick up new linker config..."
+  cargo clean --manifest-path src-tauri/Cargo.toml 2>/dev/null || true
 fi
 
 # linux: verify system libs tauri needs
@@ -133,7 +135,9 @@ fi
 
 echo ""
 echo "==> verifying rust build"
-if ! cargo check --manifest-path src-tauri/Cargo.toml 2>&1 | tail -5; then
+cargo_output=$(cargo check --manifest-path src-tauri/Cargo.toml 2>&1) && cargo_ok=true || cargo_ok=false
+echo "$cargo_output" | tail -5
+if [[ "$cargo_ok" != "true" ]]; then
   echo ""
   echo "  cargo check failed. common fixes:"
   if [[ "$(uname)" == "Darwin" ]]; then
