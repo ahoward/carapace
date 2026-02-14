@@ -186,6 +186,31 @@ async function do_ensure_skypilot(
     );
   }
 
+  // Install AWS CLI (required by sky check)
+  on_progress({
+    phase: "installing_skypilot",
+    message: "Installing AWS CLI...",
+    percent: null,
+  });
+
+  const aws_proc = Bun.spawn([uv_path, "tool", "install", "--with", "pip", "awscli"], {
+    stdout: "pipe",
+    stderr: "pipe",
+    env,
+  });
+
+  const aws_stderr = await new Response(aws_proc.stderr).text();
+  const aws_exit = await aws_proc.exited;
+
+  if (aws_exit !== 0) {
+    on_progress({
+      phase: "installing_skypilot",
+      message: `AWS CLI install warning: ${aws_stderr.trim().split("\n").pop() || "unknown"}`,
+      percent: null,
+    });
+    // Non-fatal — sky can still work for non-AWS clouds
+  }
+
   // Verify
   on_progress({
     phase: "verifying",

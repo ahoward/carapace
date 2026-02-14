@@ -19,7 +19,10 @@ RUN mkdir -p ${CARAPACE_HOME}/uv/bin && \
 ENV UV_TOOL_BIN_DIR="${CARAPACE_HOME}/tools/bin"
 ENV UV_TOOL_DIR="${CARAPACE_HOME}/tools/environments"
 ENV UV_PYTHON_INSTALL_DIR="${CARAPACE_HOME}/python"
-RUN ${CARAPACE_HOME}/uv/bin/uv tool install --with pip "skypilot-nightly[aws]"
+RUN ${CARAPACE_HOME}/uv/bin/uv tool install --with pip "skypilot-nightly[aws]" && \
+    ${CARAPACE_HOME}/uv/bin/uv tool install --with pip awscli
+
+ENV PATH="${CARAPACE_HOME}/tools/bin:${PATH}"
 
 EXPOSE 3001
 

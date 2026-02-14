@@ -6,12 +6,26 @@
  */
 
 import { existsSync } from "node:fs";
-import { sky_binary_path } from "./uv_installer";
+import path from "node:path";
+import { sky_binary_path, uv_env } from "./uv_installer";
 
 export interface SkyRunnerResult {
   exit_code: number;
   stdout: string;
   stderr: string;
+}
+
+/**
+ * Build env for sky subprocesses — ensures ~/.carapace/tools/bin is in PATH
+ * so that `aws` CLI and other managed tools are discoverable by SkyPilot.
+ */
+function sky_env(): Record<string, string | undefined> {
+  const tools_bin = path.dirname(sky_binary_path());
+  const current_path = process.env.PATH ?? "";
+  return {
+    ...process.env,
+    PATH: current_path.includes(tools_bin) ? current_path : `${tools_bin}:${current_path}`,
+  };
 }
 
 /**
@@ -47,7 +61,7 @@ export async function sky_launch(
   const proc = Bun.spawn([bin, "launch", "-c", cluster_name, "-y", yaml_path], {
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env },
+    env: sky_env(),
   });
 
   // Stream stdout line-by-line, drain stderr in background
@@ -124,7 +138,7 @@ async function run_sky(args: string[]): Promise<SkyRunnerResult> {
   const proc = Bun.spawn([bin, ...args], {
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env },
+    env: sky_env(),
   });
 
   const [stdout, stderr, exit_code] = await Promise.all([
