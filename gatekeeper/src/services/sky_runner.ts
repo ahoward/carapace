@@ -5,6 +5,9 @@
  * No HTTP concerns — just process management.
  */
 
+import { existsSync } from "node:fs";
+import { sky_binary_path } from "./uv_installer";
+
 export interface SkyRunnerResult {
   exit_code: number;
   stdout: string;
@@ -12,10 +15,19 @@ export interface SkyRunnerResult {
 }
 
 /**
- * Check if the `sky` binary is available in PATH.
+ * Check if the `sky` binary is available.
+ *
+ * Resolution order:
+ *   1. Carapace-managed path (~/.carapace/tools/bin/sky)
+ *   2. System PATH fallback (Bun.which("sky"))
+ *
  * Returns the absolute path or null.
  */
 export function sky_binary(): string | null {
+  const managed = sky_binary_path();
+  if (existsSync(managed)) {
+    return managed;
+  }
   return Bun.which("sky");
 }
 

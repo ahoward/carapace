@@ -92,3 +92,27 @@ export interface ProvisioningEvent {
   type: "progress" | "error" | "complete";
   message: string;
 }
+
+// ── SkyPilot installer types (Phase 1C) ──
+
+export type InstallPhase =
+  | "checking"
+  | "downloading_uv"
+  | "installing_skypilot"
+  | "verifying"
+  | "complete"
+  | "error";
+
+export interface InstallProgress {
+  phase: InstallPhase;
+  message: string;
+  percent: number | null;
+}
+
+export interface InstallStatus {
+  uv_installed: boolean;
+  uv_version: string | null;
+  sky_installed: boolean;
+  sky_version: string | null;
+  carapace_home: string;
+}

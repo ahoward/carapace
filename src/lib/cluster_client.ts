@@ -5,7 +5,7 @@
  * Each function returns a ResultEnvelope — never throws.
  */
 
-import type { ClusterStatus, ProvisioningEvent } from "../../gatekeeper/src/types";
+import type { ClusterStatus, InstallStatus, ProvisioningEvent } from "../../gatekeeper/src/types";
 
 export interface ResultEnvelope<T> {
   status: "success" | "error";
@@ -108,6 +108,30 @@ export async function cluster_destroy(
     return await response.json();
   } catch (err) {
     return network_error("/cluster/destroy", err);
+  }
+}
+
+export async function cluster_install_status(
+  base_url: string,
+): Promise<ResultEnvelope<InstallStatus>> {
+  try {
+    const response = await fetch(`${base_url}/cluster/install-status`);
+    return await response.json();
+  } catch (err) {
+    return network_error("/cluster/install-status", err);
+  }
+}
+
+export async function cluster_ensure_skypilot(
+  base_url: string,
+): Promise<ResultEnvelope<{ message: string; sky_binary?: string }>> {
+  try {
+    const response = await fetch(`${base_url}/cluster/ensure-skypilot`, {
+      method: "POST",
+    });
+    return await response.json();
+  } catch (err) {
+    return network_error("/cluster/ensure-skypilot", err);
   }
 }
 

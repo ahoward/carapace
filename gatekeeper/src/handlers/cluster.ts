@@ -15,7 +15,14 @@ import {
   sky_status as sky_status_cmd,
   sky_stop,
 } from "../services/sky_runner";
-import type { Cluster, ClusterStatus, ProviderConfig, ProvisioningEvent } from "../types";
+import { check_install_status, ensure_skypilot } from "../services/uv_installer";
+import type {
+  Cluster,
+  ClusterStatus,
+  InstallStatus,
+  ProviderConfig,
+  ProvisioningEvent,
+} from "../types";
 
 // ── T008: In-memory cluster state store ──
 
@@ -97,16 +104,24 @@ function make_event(type: ProvisioningEvent["type"], message: string): Provision
 export async function handle_cluster_check(pathname: string): Promise<Response> {
   const start = Date.now();
 
-  const bin = sky_binary();
+  let bin = sky_binary();
   if (!bin) {
-    return Response.json(
-      make_envelope(pathname, start, {
-        sky_installed: false,
-        sky_version: null,
-        enabled_clouds: [],
-        disabled_clouds: {},
-      }),
-    );
+    // Attempt auto-install (T012)
+    try {
+      bin = await ensure_skypilot((progress) => {
+        broadcast_event(make_event("progress", `[install] ${progress.message}`));
+      });
+    } catch {
+      // Install failed — report as not installed gracefully
+      return Response.json(
+        make_envelope(pathname, start, {
+          sky_installed: false,
+          sky_version: null,
+          enabled_clouds: [],
+          disabled_clouds: {},
+        }),
+      );
+    }
   }
 
   const result = await sky_check();
@@ -138,17 +153,22 @@ export async function handle_cluster_launch(request: Request, pathname: string):
     );
   }
 
-  // Check sky installed (FR-011)
-  const bin = sky_binary();
+  // Auto-install SkyPilot if not present (T011)
+  let bin = sky_binary();
   if (!bin) {
-    return Response.json(
-      make_error(pathname, start, {
-        sky: [
-          "SkyPilot not installed. Install with: pip install skypilot-nightly[aws] (or gcp, azure)",
-        ],
-      }),
-      { status: 424 },
-    );
+    try {
+      bin = await ensure_skypilot((progress) => {
+        broadcast_event(make_event("progress", `[install] ${progress.message}`));
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "SkyPilot installation failed";
+      return Response.json(
+        make_error(pathname, start, {
+          sky: [msg],
+        }),
+        { status: 424 },
+      );
+    }
   }
 
   // Check credentials (FR-008)
@@ -466,6 +486,52 @@ export async function handle_cluster_destroy(pathname: string): Promise<Response
     make_envelope(pathname, start, {
       message: "Destroy initiated",
       cluster_name: CLUSTER_NAME,
+    }),
+    { status: 202 },
+  );
+}
+
+/**
+ * GET /cluster/install-status — report current uv/sky installation state (T017).
+ */
+export async function handle_install_status(pathname: string): Promise<Response> {
+  const start = Date.now();
+  const status: InstallStatus = await check_install_status();
+  return Response.json(make_envelope(pathname, start, status));
+}
+
+/**
+ * POST /cluster/ensure-skypilot — explicitly trigger SkyPilot install (T018).
+ */
+export async function handle_ensure_skypilot(pathname: string): Promise<Response> {
+  const start = Date.now();
+
+  // Already installed?
+  const bin = sky_binary();
+  if (bin) {
+    return Response.json(
+      make_envelope(pathname, start, {
+        message: "SkyPilot already installed",
+        sky_binary: bin,
+      }),
+    );
+  }
+
+  // Trigger install in background, return 202
+  ensure_skypilot((progress) => {
+    broadcast_event(make_event("progress", `[install] ${progress.message}`));
+  })
+    .then((sky_path) => {
+      broadcast_event(make_event("complete", `SkyPilot installed at ${sky_path}`));
+    })
+    .catch((err) => {
+      const msg = err instanceof Error ? err.message : "SkyPilot installation failed";
+      broadcast_event(make_event("error", msg));
+    });
+
+  return Response.json(
+    make_envelope(pathname, start, {
+      message: "SkyPilot installation started",
     }),
     { status: 202 },
   );

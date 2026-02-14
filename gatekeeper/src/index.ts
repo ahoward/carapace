@@ -8,6 +8,8 @@ import {
   handle_cluster_launch,
   handle_cluster_status_refresh,
   handle_cluster_stop,
+  handle_ensure_skypilot,
+  handle_install_status,
 } from "./handlers/cluster";
 import { handle_set_mode } from "./handlers/control";
 import { handle_fs_list } from "./handlers/fs_list";
@@ -100,6 +102,14 @@ const server = Bun.serve({
     }
 
     // ── Cluster management routes (Phase 1B) ──
+
+    if (url.pathname === "/cluster/install-status" && request.method === "GET") {
+      return with_cors(await handle_install_status(url.pathname));
+    }
+
+    if (url.pathname === "/cluster/ensure-skypilot" && request.method === "POST") {
+      return with_cors(await handle_ensure_skypilot(url.pathname));
+    }
 
     if (url.pathname === "/cluster/check" && request.method === "GET") {
       return with_cors(await handle_cluster_check(url.pathname));

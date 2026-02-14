@@ -74,13 +74,63 @@ ensure_shell_profile() {
     changed=true
   fi
 
-  if [[ "$changed" == "true" ]]; then
-    echo "  updated $profile with bun/cargo PATH entries"
+  if ! grep -q '\.carapace/tools/bin' "$profile" 2>/dev/null; then
+    echo '' >> "$profile"
+    echo '# carapace cloud tools (added by carapace bin/setup)' >> "$profile"
+    echo 'export PATH="$HOME/.carapace/tools/bin:$PATH"' >> "$profile"
+    changed=true
   fi
+
+  if [[ "$changed" == "true" ]]; then
+    echo "  updated $profile with bun/cargo/carapace PATH entries"
+  fi
+}
+
+ensure_uv() {
+  local uv_bin="$HOME/.carapace/uv/bin/uv"
+  if [[ -x "$uv_bin" ]]; then
+    printf "  %-12s %s\n" "uv" "$uv_bin"
+    return
+  fi
+  echo "  uv not found — installing..."
+  local arch os_name target
+  arch="$(uname -m)"
+  case "$arch" in
+    arm64|aarch64) arch="aarch64" ;;
+    *) arch="x86_64" ;;
+  esac
+  case "$(uname)" in
+    Darwin) os_name="apple-darwin" ;;
+    *) os_name="unknown-linux-gnu" ;;
+  esac
+  target="uv-${arch}-${os_name}"
+  local url="https://github.com/astral-sh/uv/releases/latest/download/${target}.tar.gz"
+  mkdir -p "$HOME/.carapace/uv/bin"
+  curl -fsSL "$url" | tar xzf - --strip-components=1 -C "$HOME/.carapace/uv/bin"
+  chmod +x "$uv_bin"
+  printf "  %-12s %s\n" "uv" "$uv_bin"
+}
+
+ensure_skypilot() {
+  local sky_bin="$HOME/.carapace/tools/bin/sky"
+  if [[ -x "$sky_bin" ]]; then
+    printf "  %-12s %s\n" "sky" "$sky_bin"
+    return
+  fi
+  echo "  sky not found — installing via uv..."
+  local uv_bin="$HOME/.carapace/uv/bin/uv"
+  export UV_TOOL_BIN_DIR="$HOME/.carapace/tools/bin"
+  export UV_TOOL_DIR="$HOME/.carapace/tools/environments"
+  export UV_PYTHON_INSTALL_DIR="$HOME/.carapace/python"
+  mkdir -p "$UV_TOOL_BIN_DIR" "$UV_TOOL_DIR" "$UV_PYTHON_INSTALL_DIR"
+  "$uv_bin" tool install "skypilot-nightly[aws]"
+  printf "  %-12s %s\n" "sky" "$sky_bin"
 }
 
 ensure_bun
 ensure_rust
+ensure_uv
+ensure_skypilot
 ensure_shell_profile
 
 echo ""
