@@ -35,7 +35,7 @@ Carapace is a zero-configuration desktop application that wraps OpenClaw, enabli
 - [ ] Set up build tooling (Vite, TypeScript, Rust/Tauri backend)
 - [ ] Define project conventions (linting, formatting, testing, CI)
 - [ ] Establish constitution and spec-kit workflow
-- [ ] Spike: Tauri → Python child process communication (for SkyPilot/Gatekeeper)
+- [ ] Spike: Tauri → Bun child process communication (for SkyPilot/Gatekeeper)
 
 ---
 
@@ -43,7 +43,7 @@ Carapace is a zero-configuration desktop application that wraps OpenClaw, enabli
 
 **Goal:** One user can launch a VPS, toggle Local/Cloud mode, and see the Gatekeeper enforce data boundaries. Ugly is fine. It works end-to-end.
 
-### 1A — Gatekeeper Middleware (Python/FastAPI)
+### 1A — Gatekeeper Middleware (Bun/TypeScript)
 
 - [ ] Implement `/control/set-mode` endpoint (LOCAL / CLOUD)
 - [ ] Implement `/tools/fs/read` with mode-based access control

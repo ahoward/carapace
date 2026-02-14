@@ -8,7 +8,7 @@ Here is a Product Requirements Document (PRD) for the **OpenClaw Desktop & Priva
 
 **Status:** Draft
 
-**Methodology:** Electron Wrapper \+ Python Gatekeeper \+ SkyPilot
+**Methodology:** Tauri Desktop \+ Bun/TypeScript Gatekeeper \+ SkyPilot
 
 ## **1\. Executive Summary**
 
@@ -52,7 +52,7 @@ Crucially, it introduces a **"Data Gatekeeper"**, a middleware layer that strict
 ### **3.1 Stack Overview**
 
 * **Frontend (Host):** Electron (React/TypeScript) \- The UI and Orchestrator.  
-* **Infrastructure (Host):** SkyPilot (Python SDK) \- Manages the cloud VPS.  
+* **Infrastructure (Host):** SkyPilot (CLI) \- Manages the cloud VPS.
 * **Networking:** Tailscale \- Creates a secure, encrypted mesh between Host and VPS.  
 * **Backend (VPS):** Docker \- Runs OpenClaw, Ollama, and the **Gatekeeper Middleware**.
 
@@ -123,7 +123,7 @@ ipcMain.handle('launch-vps', async (event, userConfig) \=\> {
   });  
 });
 
-### **4.2 The Gatekeeper Middleware (Python/FastAPI)**
+### **4.2 The Gatekeeper Middleware (Bun/TypeScript)**
 
 This runs **inside** the VPS Docker container. It is the only way the OpenClaw agent can read files.
 
@@ -246,6 +246,6 @@ services:
 
 ## **6\. Next Steps**
 
-1. **Prototype:** Build the Python Gatekeeper and test "Cloud Mode" rejection logic.  
+1. **Prototype:** Build the Bun/TypeScript Gatekeeper and test "Cloud Mode" rejection logic.
 2. **UI Mockup:** Design the "Privacy Toggle" interaction in Figma.  
 3. **SkyPilot Test:** Verify file\_mounts latency for larger datasets (e.g., 500MB+ repos).

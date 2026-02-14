@@ -32,7 +32,7 @@ A zero-config desktop app that deploys [OpenClaw](https://github.com/openclaw) o
   │  YOUR VPS (ephemeral compute — destroy anytime)        │
   │                                                        │
   │  ┌──────────────────────────────────────────────┐      │
-  │  │ GATEKEEPER (FastAPI)                         │      │
+  │  │ GATEKEEPER (Bun/TS)                          │      │
   │  │                                              │      │
   │  │  LOCAL MODE:  /private ✅  /public ✅         │      │
   │  │  CLOUD MODE:  /private 🚫  /public ✅         │      │
@@ -101,7 +101,7 @@ Your laptop is the source of truth. The VPS is disposable compute. Nuke it whene
 | Layer | Tech | Why |
 |-------|------|-----|
 | Desktop | **Tauri 2.x** + React + TypeScript | Native performance, tiny bundle, not Electron |
-| Gatekeeper | **Python/FastAPI** | The security boundary. Testable standalone. |
+| Gatekeeper | **Bun/TypeScript** | The security boundary. Shared types with frontend. Testable standalone. |
 | Infrastructure | **SkyPilot** | One API for every cloud. You pick the provider. |
 | Networking | **Tailscale** | Encrypted mesh. Zero config. No open ports. |
 | VPS Runtime | **Docker Compose** | OpenClaw + Ollama + Gatekeeper in containers |

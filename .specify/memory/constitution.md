@@ -1,20 +1,18 @@
 <!--
 Sync Impact Report
 ===================
-Version change: 0.0.0 → 1.0.0
-Modified principles: N/A (initial ratification)
-Added sections:
-  - Core Principles (7 principles)
-  - Technology Constraints
-  - Development Workflow
-  - Governance
-Removed sections: N/A
+Version change: 1.0.0 → 1.1.0
+Modified sections:
+  - Technology Constraints: Gatekeeper changed from Python 3.11+/FastAPI to Bun/TypeScript
+  - Principle IV (Thin Desktop Shell): updated language reference from Python to Bun/TypeScript
+  - Development Workflow: updated Gatekeeper testing reference
+Rationale: Unify the stack on a single language (TypeScript) across frontend, backend,
+  and Gatekeeper. Eliminates Python runtime dependency. SkyPilot consumed via CLI.
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ compatible (Constitution Check section aligns)
-  - .specify/templates/spec-template.md ✅ compatible (no constitution-specific refs)
-  - .specify/templates/tasks-template.md ✅ compatible (no constitution-specific refs)
-  - .specify/templates/commands/*.md — no files present, N/A
-Follow-up TODOs: none
+  - .specify/templates/plan-template.md ✅ compatible
+  - .specify/templates/spec-template.md ✅ compatible
+  - .specify/templates/tasks-template.md ✅ compatible
+Follow-up TODOs: Update README.md tech stack table
 -->
 
 # Carapace Constitution
@@ -48,8 +46,8 @@ bug in the product.
 ### IV. Thin Desktop Shell
 
 The Tauri desktop app MUST remain a thin orchestration layer. Business
-logic belongs in the Python Gatekeeper (security/data), SkyPilot
-(infrastructure), or React frontend (UI state). The Rust/Tauri backend
+logic belongs in the Bun/TypeScript Gatekeeper (security/data), SkyPilot
+CLI (infrastructure), or React frontend (UI state). The Rust/Tauri backend
 handles only: spawning child processes, IPC bridging, and OS-level
 operations (file paths, system tray). This keeps most logic testable
 without building a native binary.
@@ -81,7 +79,7 @@ backend, Gatekeeper, Docker networking, Tailscale tunnel.
 ## Technology Constraints
 
 - **Desktop**: Tauri 2.x + React + TypeScript + Vite
-- **Gatekeeper**: Python 3.11+ + FastAPI
+- **Gatekeeper**: Bun + TypeScript (Hono or Bun.serve)
 - **Infrastructure**: SkyPilot (all supported cloud providers)
 - **Networking**: Tailscale (hard dependency, no abstraction layer)
 - **VPS Runtime**: Docker Compose (OpenClaw + Ollama + Gatekeeper)
@@ -100,8 +98,8 @@ backend, Gatekeeper, Docker networking, Tailscale tunnel.
   testing happens on the developer's local macOS machine.
 - **React in browser first**: The React frontend MUST be runnable via
   `npm run dev` in a browser with mock backends, independent of Tauri.
-- **Gatekeeper tested headless**: The Python Gatekeeper MUST have a
-  standalone test suite that runs without any desktop app or VPS.
+- **Gatekeeper tested headless**: The Bun/TypeScript Gatekeeper MUST have a
+  standalone test suite (via `bun test`) that runs without any desktop app or VPS.
 - **Commits are atomic**: Each commit represents a complete,
   non-breaking unit of work. No "WIP" commits on main after Phase 0.
 
@@ -119,4 +117,4 @@ Carapace project. All code changes MUST comply with these principles.
   that verifies alignment with these principles before implementation
   begins.
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-14
+**Version**: 1.1.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-14
