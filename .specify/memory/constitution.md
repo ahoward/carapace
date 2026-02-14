@@ -1,50 +1,122 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+===================
+Version change: 0.0.0 → 1.0.0
+Modified principles: N/A (initial ratification)
+Added sections:
+  - Core Principles (7 principles)
+  - Technology Constraints
+  - Development Workflow
+  - Governance
+Removed sections: N/A
+Templates requiring updates:
+  - .specify/templates/plan-template.md ✅ compatible (Constitution Check section aligns)
+  - .specify/templates/spec-template.md ✅ compatible (no constitution-specific refs)
+  - .specify/templates/tasks-template.md ✅ compatible (no constitution-specific refs)
+  - .specify/templates/commands/*.md — no files present, N/A
+Follow-up TODOs: none
+-->
+
+# Carapace Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Privacy by Default (NON-NEGOTIABLE)
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Sensitive user data MUST never leave the user's controlled environment
+when using third-party AI APIs. The system MUST fail secure: if the
+Gatekeeper crashes, disconnects, or enters an unknown state, private
+data MUST be inaccessible. Cloud mode MUST block all access to private
+data — there are no exceptions, overrides, or "trust me" flags.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Data Sovereignty
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+The user's local machine is the single source of truth for all data.
+The VPS is ephemeral compute that can be destroyed and recreated at
+any time without data loss. All data flows from local → remote, never
+the reverse. The user MUST be able to destroy their VPS and retain
+100% of their data locally.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Zero Configuration for End Users
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+The target user is a non-DevOps person. Every infrastructure operation
+(provisioning, networking, deployment) MUST be abstracted behind a
+single click or toggle. Users MUST NOT need to learn Terraform, SSH,
+Docker, or SkyPilot. If a workflow requires terminal access, it is a
+bug in the product.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Thin Desktop Shell
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+The Tauri desktop app MUST remain a thin orchestration layer. Business
+logic belongs in the Python Gatekeeper (security/data), SkyPilot
+(infrastructure), or React frontend (UI state). The Rust/Tauri backend
+handles only: spawning child processes, IPC bridging, and OS-level
+operations (file paths, system tray). This keeps most logic testable
+without building a native binary.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Vertical Slice Development
+
+Every feature MUST be built as a thin end-to-end path through all
+layers before any single layer is widened. No layer gets polished in
+isolation. A working ugly feature beats a beautiful half-feature. Each
+slice MUST be demonstrable: a human can pull, build, and manually
+verify it on macOS.
+
+### VI. Upstream Integrity
+
+Carapace wraps OpenClaw; it does not fork, patch, or embed it.
+OpenClaw is consumed as a published Docker image
+(`openclaw/core:latest`). Carapace MUST NOT contain OpenClaw
+source code. If OpenClaw needs changes, those changes are contributed
+upstream.
+
+### VII. Fail Secure, Not Fail Open
+
+When any component enters an error state, the system MUST restrict
+access rather than grant it. The Gatekeeper defaults to LOCAL mode on
+boot. Network failures MUST NOT expose private data. Unknown states
+are treated as hostile. This principle applies to every layer: Tauri
+backend, Gatekeeper, Docker networking, Tailscale tunnel.
+
+## Technology Constraints
+
+- **Desktop**: Tauri 2.x + React + TypeScript + Vite
+- **Gatekeeper**: Python 3.11+ + FastAPI
+- **Infrastructure**: SkyPilot (all supported cloud providers)
+- **Networking**: Tailscale (hard dependency, no abstraction layer)
+- **VPS Runtime**: Docker Compose (OpenClaw + Ollama + Gatekeeper)
+- **Auth model**: Local single-user; no accounts, no server-side auth
+- **Multi-cluster**: Single cluster for MVP; design MUST NOT preclude
+  multi-cluster in the future (use cluster identifiers, not singletons)
+- **File integrity**: `.envrc` MUST never be overwritten, deleted, or
+  modified by any automated process
+
+## Development Workflow
+
+- **Spec-driven**: Every feature goes through the spec-kit cycle:
+  specify → plan → tasks → implement. No code without a spec.
+- **Step-by-step delivery**: Each push MUST be pullable and testable
+  on macOS. Development happens on a remote Linux machine; manual
+  testing happens on the developer's local macOS machine.
+- **React in browser first**: The React frontend MUST be runnable via
+  `npm run dev` in a browser with mock backends, independent of Tauri.
+- **Gatekeeper tested headless**: The Python Gatekeeper MUST have a
+  standalone test suite that runs without any desktop app or VPS.
+- **Commits are atomic**: Each commit represents a complete,
+  non-breaking unit of work. No "WIP" commits on main after Phase 0.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices for the
+Carapace project. All code changes MUST comply with these principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- **Amendments** require explicit documentation of what changed and why,
+  version bump per semantic versioning, and propagation to dependent
+  templates.
+- **Versioning**: MAJOR for principle removal/redefinition, MINOR for
+  new principles or material expansion, PATCH for clarifications.
+- **Compliance**: Every spec and plan MUST include a Constitution Check
+  that verifies alignment with these principles before implementation
+  begins.
+
+**Version**: 1.0.0 | **Ratified**: 2026-02-14 | **Last Amended**: 2026-02-14
