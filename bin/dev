@@ -1,167 +1,203 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env bun
 
-cd "$(dirname "$0")/.."
+import { $ } from "bun";
+import { spawn, type Subprocess } from "bun";
+import { resolve } from "node:path";
 
-# ensure bun/cargo are in PATH
-[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
-export PATH="${HOME}/.bun/bin:$PATH"
+const ROOT = resolve(import.meta.dir, "..");
+process.chdir(ROOT);
 
-usage() {
-  cat <<EOF
-usage: ./bin/dev [--browser | --desktop]
+// ---------------------------------------------------------------------------
+//  CLI
+// ---------------------------------------------------------------------------
+const args = process.argv.slice(2);
+let mode: "browser" | "desktop" = "browser";
+
+for (const arg of args) {
+  if (arg === "--browser") mode = "browser";
+  else if (arg === "--desktop") mode = "desktop";
+  else if (arg === "-h" || arg === "--help") {
+    console.log(`usage: ./bin/dev [--browser | --desktop]
 
   --browser   vite dev server + gatekeeper (default)
-  --desktop   cargo tauri dev (spawns gatekeeper from rust)
-EOF
-  exit 1
+  --desktop   cargo tauri dev (spawns gatekeeper from rust)`);
+    process.exit(0);
+  } else {
+    console.error(`unknown flag: ${arg}`);
+    process.exit(1);
+  }
 }
 
-mode="browser"
+// ---------------------------------------------------------------------------
+//  Helpers
+// ---------------------------------------------------------------------------
+const GK_PORT = 3001;
+const GK_URL = `http://localhost:${GK_PORT}`;
+const MAX_BACKOFF = 16;
+const INITIAL_BACKOFF = 1;
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --browser)  mode="browser"; shift ;;
-    --desktop)  mode="desktop"; shift ;;
-    -h|--help)  usage ;;
-    *)          echo "unknown flag: $1" >&2; usage ;;
-  esac
-done
+let shutting_down = false;
+let gk_proc: Subprocess | null = null;
+let vite_proc: Subprocess | null = null;
 
-# ---------------------------------------------------------------------------
-#  Gatekeeper supervisor — auto-respawn with exponential backoff
-# ---------------------------------------------------------------------------
-SHUTTING_DOWN=false
-gk_pid=""
-vite_pid=""
-
-GK_MAX_BACKOFF=16   # max seconds between respawn attempts
-GK_INITIAL_BACKOFF=1
-
-start_gatekeeper() {
-  # kill any orphaned gatekeeper on port 3001 before starting
-  lsof -ti:3001 2>/dev/null | xargs kill -9 2>/dev/null || true
-  sleep 0.2
-
-  bun run gatekeeper/src/index.ts &
-  gk_pid=$!
+function sleep(seconds: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, seconds * 1000));
 }
 
-wait_for_gatekeeper() {
-  for _i in $(seq 1 20); do
-    curl -sf http://localhost:3001/health >/dev/null 2>&1 && return 0
-    sleep 0.25
-  done
-  return 1
+async function health_check(): Promise<boolean> {
+  try {
+    const res = await fetch(`${GK_URL}/health`);
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
-# Supervisor loop: runs in background, restarts gatekeeper on unexpected exit
-supervise_gatekeeper() {
-  local backoff=$GK_INITIAL_BACKOFF
-
-  while true; do
-    # wait for the current gatekeeper process to exit
-    local exit_code=0
-    wait "$gk_pid" 2>/dev/null || exit_code=$?
-
-    # if we're shutting down, don't respawn
-    if $SHUTTING_DOWN; then
-      return
-    fi
-
-    echo ""
-    echo "  !! gatekeeper (pid $gk_pid) exited with code $exit_code — respawning in ${backoff}s..."
-    sleep "$backoff"
-
-    # double backoff up to max
-    if [[ $backoff -lt $GK_MAX_BACKOFF ]]; then
-      backoff=$((backoff * 2))
-      if [[ $backoff -gt $GK_MAX_BACKOFF ]]; then
-        backoff=$GK_MAX_BACKOFF
-      fi
-    fi
-
-    if $SHUTTING_DOWN; then
-      return
-    fi
-
-    echo "  ==> respawning gatekeeper"
-    start_gatekeeper
-
-    if wait_for_gatekeeper; then
-      echo "  gatekeeper back up (pid $gk_pid)"
-      backoff=$GK_INITIAL_BACKOFF  # reset backoff on successful start
-    else
-      echo "  WARNING: gatekeeper not responding after respawn"
-    fi
-  done
+async function wait_for_gatekeeper(): Promise<boolean> {
+  for (let i = 0; i < 20; i++) {
+    if (await health_check()) return true;
+    await sleep(0.25);
+  }
+  return false;
 }
 
-kill_pid() {
-  local pid="$1"
-  [[ -z "$pid" ]] && return
-
-  # SIGTERM
-  kill "$pid" 2>/dev/null || true
-
-  # wait up to 2 seconds
-  local deadline=$((SECONDS + 2))
-  while kill -0 "$pid" 2>/dev/null; do
-    if [[ $SECONDS -ge $deadline ]]; then
-      break
-    fi
-    sleep 0.1
-  done
-
-  # SIGKILL if still alive
-  kill -9 "$pid" 2>/dev/null || true
+async function kill_port(port: number): Promise<void> {
+  try {
+    await $`lsof -ti:${port}`.quiet().text().then((pids) => {
+      for (const pid of pids.trim().split("\n").filter(Boolean)) {
+        try { process.kill(Number(pid), "SIGKILL"); } catch {}
+      }
+    });
+  } catch {}
 }
 
-cleanup() {
-  SHUTTING_DOWN=true
-  echo ""
-  echo "shutting down..."
-
-  # ask gatekeeper to shut down gracefully via HTTP first
-  curl -sf -X POST http://localhost:3001/control/shutdown >/dev/null 2>&1 || true
-
-  kill_pid "$gk_pid"
-  kill_pid "$vite_pid"
-  wait 2>/dev/null || true
-
-  # kill any orphaned gatekeeper on port 3001
-  lsof -ti:3001 2>/dev/null | xargs kill -9 2>/dev/null || true
-
-  echo "done."
+function kill_proc(proc: Subprocess | null): void {
+  if (!proc || proc.exitCode !== null) return;
+  try { proc.kill("SIGTERM"); } catch {}
 }
 
-if [[ "$mode" == "browser" ]]; then
-  trap cleanup EXIT INT TERM
+function force_kill_proc(proc: Subprocess | null): void {
+  if (!proc || proc.exitCode !== null) return;
+  try { proc.kill("SIGKILL"); } catch {}
+}
 
-  echo "==> starting gatekeeper on :3001"
-  start_gatekeeper
+function start_gatekeeper(): Subprocess {
+  return spawn({
+    cmd: ["bun", "run", "gatekeeper/src/index.ts"],
+    cwd: ROOT,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+}
 
-  if wait_for_gatekeeper; then
-    echo "  gatekeeper ready (pid $gk_pid)"
-  else
-    echo "  WARNING: gatekeeper not responding on :3001"
-  fi
+// ---------------------------------------------------------------------------
+//  Cleanup
+// ---------------------------------------------------------------------------
+async function cleanup() {
+  if (shutting_down) return;
+  shutting_down = true;
+  console.log("\nshutting down...");
 
-  echo "==> starting vite on :1420"
-  bun run dev &
-  vite_pid=$!
+  // graceful HTTP shutdown
+  try {
+    await fetch(`${GK_URL}/control/shutdown`, { method: "POST" });
+  } catch {}
 
-  echo ""
-  echo "  browser: http://localhost:1420"
-  echo "  gatekeeper: http://localhost:3001"
-  echo "  (gatekeeper auto-respawns on crash)"
-  echo ""
+  // SIGTERM both
+  kill_proc(gk_proc);
+  kill_proc(vite_proc);
 
-  # supervisor loop runs in foreground — keeps the script alive
-  supervise_gatekeeper
-else
-  echo "==> cargo tauri dev"
-  echo "  (gatekeeper is spawned by the rust backend)"
-  echo ""
-  cargo tauri dev
-fi
+  // give 2 seconds to exit
+  await sleep(2);
+
+  // SIGKILL stragglers
+  force_kill_proc(gk_proc);
+  force_kill_proc(vite_proc);
+
+  // orphan cleanup
+  await kill_port(GK_PORT);
+
+  console.log("done.");
+  process.exit(0);
+}
+
+process.on("SIGTERM", cleanup);
+process.on("SIGINT", cleanup);
+
+// ---------------------------------------------------------------------------
+//  Desktop mode
+// ---------------------------------------------------------------------------
+if (mode === "desktop") {
+  console.log("==> cargo tauri dev");
+  console.log("  (gatekeeper is spawned by the rust backend)\n");
+  const tauri = spawn({
+    cmd: ["cargo", "tauri", "dev"],
+    cwd: ROOT,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  process.exitCode = await tauri.exited;
+  process.exit();
+}
+
+// ---------------------------------------------------------------------------
+//  Browser mode — gatekeeper supervisor + vite
+// ---------------------------------------------------------------------------
+await kill_port(GK_PORT);
+await sleep(0.2);
+
+console.log("==> starting gatekeeper on :3001");
+gk_proc = start_gatekeeper();
+
+if (await wait_for_gatekeeper()) {
+  console.log(`  gatekeeper ready (pid ${gk_proc.pid})`);
+} else {
+  console.log("  WARNING: gatekeeper not responding on :3001");
+}
+
+console.log("==> starting vite on :1420");
+vite_proc = spawn({
+  cmd: ["bun", "run", "dev"],
+  cwd: ROOT,
+  stdout: "inherit",
+  stderr: "inherit",
+});
+
+console.log(`
+  browser:    http://localhost:1420
+  gatekeeper: http://localhost:3001
+  (gatekeeper auto-respawns on crash)
+`);
+
+// ---------------------------------------------------------------------------
+//  Supervisor loop
+// ---------------------------------------------------------------------------
+let backoff = INITIAL_BACKOFF;
+
+while (!shutting_down) {
+  const exit_code = await gk_proc.exited;
+
+  if (shutting_down) break;
+
+  console.log(
+    `\n  !! gatekeeper (pid ${gk_proc.pid}) exited with code ${exit_code} — respawning in ${backoff}s...`,
+  );
+  await sleep(backoff);
+
+  // exponential backoff, cap at MAX_BACKOFF
+  backoff = Math.min(backoff * 2, MAX_BACKOFF);
+
+  if (shutting_down) break;
+
+  console.log("  ==> respawning gatekeeper");
+  await kill_port(GK_PORT);
+  await sleep(0.2);
+  gk_proc = start_gatekeeper();
+
+  if (await wait_for_gatekeeper()) {
+    console.log(`  gatekeeper back up (pid ${gk_proc.pid})`);
+    backoff = INITIAL_BACKOFF;
+  } else {
+    console.log("  WARNING: gatekeeper not responding after respawn");
+  }
+}

@@ -1,9 +1,12 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env bun
 
-cd "$(dirname "$0")/.."
+import { $ } from "bun";
+import { resolve } from "node:path";
 
-git pull
-bun test --cwd gatekeeper
-./bin/setup
-exec ./bin/dev --browser
+const ROOT = resolve(import.meta.dir, "..");
+process.chdir(ROOT);
+
+await $`git pull`;
+await $`bun test --cwd gatekeeper`;
+await $`./bin/setup`;
+await $`./bin/dev --browser`;
