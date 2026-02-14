@@ -52,6 +52,49 @@ export const PLAYBOOK_STEPS: PlaybookStep[] = [
     instruction: "Click 'Start Gatekeeper'.",
     expected: "Status returns to 'running', files list repopulates.",
   },
+  // ── Phase 1B: SkyPilot Provisioning ──
+  {
+    id: "cluster-check",
+    title: "Verify cloud server panel",
+    instruction: "With gatekeeper running, confirm the Cloud Server panel appears.",
+    expected:
+      "Cloud Server section shows status 'no server', Launch button enabled, Stop/Destroy disabled.",
+  },
+  {
+    id: "cluster-launch",
+    title: "Launch cloud server",
+    instruction: "Click 'Launch Server'. (Requires SkyPilot installed + cloud credentials.)",
+    expected:
+      "Status transitions to 'provisioning' with spinner. Progress events appear in debug panel. After 5-10 min, status shows 'running' with IP address.",
+  },
+  {
+    id: "cluster-status-poll",
+    title: "Verify status polling",
+    instruction: "With a running server, wait 30 seconds and observe status updates.",
+    expected:
+      "Status badge stays 'running'. Debug panel shows periodic status polls. No stale state.",
+  },
+  {
+    id: "cluster-stop",
+    title: "Stop cloud server",
+    instruction: "Click 'Stop Server'.",
+    expected:
+      "Status transitions to 'stopping', then 'stopped' within 2 minutes. IP disappears. Launch button remains disabled.",
+  },
+  {
+    id: "cluster-destroy",
+    title: "Destroy cloud server",
+    instruction: "Click 'Destroy Server' and confirm the dialog.",
+    expected:
+      "Status transitions to 'destroying', then 'no server' within 3 minutes. Launch button re-enabled.",
+  },
+  {
+    id: "cluster-missing-sky",
+    title: "Error: missing SkyPilot",
+    instruction: "Ensure 'sky' is not in PATH (rename binary). Click 'Launch Server'.",
+    expected:
+      "Error message about SkyPilot not installed with installation instructions. Status does not change from 'no server'.",
+  },
 ];
 
 /**

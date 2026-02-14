@@ -1,6 +1,14 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { make_envelope, make_error } from "./envelope";
+import {
+  handle_cluster_check,
+  handle_cluster_destroy,
+  handle_cluster_events,
+  handle_cluster_launch,
+  handle_cluster_status_refresh,
+  handle_cluster_stop,
+} from "./handlers/cluster";
 import { handle_set_mode } from "./handlers/control";
 import { handle_fs_list } from "./handlers/fs_list";
 import { handle_fs_read } from "./handlers/fs_read";
@@ -89,6 +97,32 @@ const server = Bun.serve({
 
     if (url.pathname === "/tools/fs/list" && request.method === "GET") {
       return with_cors(handle_fs_list(url.pathname, current_mode));
+    }
+
+    // ── Cluster management routes (Phase 1B) ──
+
+    if (url.pathname === "/cluster/check" && request.method === "GET") {
+      return with_cors(await handle_cluster_check(url.pathname));
+    }
+
+    if (url.pathname === "/cluster/launch" && request.method === "POST") {
+      return with_cors(await handle_cluster_launch(request, url.pathname));
+    }
+
+    if (url.pathname === "/cluster/status" && request.method === "GET") {
+      return with_cors(await handle_cluster_status_refresh(url.pathname));
+    }
+
+    if (url.pathname === "/cluster/events" && request.method === "GET") {
+      return with_cors(handle_cluster_events());
+    }
+
+    if (url.pathname === "/cluster/stop" && request.method === "POST") {
+      return with_cors(await handle_cluster_stop(url.pathname));
+    }
+
+    if (url.pathname === "/cluster/destroy" && request.method === "POST") {
+      return with_cors(await handle_cluster_destroy(url.pathname));
     }
 
     if (url.pathname === "/control/shutdown" && request.method === "POST") {
