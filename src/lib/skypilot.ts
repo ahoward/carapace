@@ -7,6 +7,12 @@
 
 import type { ClusterStatus, SkyPilotConfig } from "../../gatekeeper/src/types";
 
+/** Strip ANSI escape codes from a string. */
+function strip_ansi(s: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequence stripping requires matching \x1b
+  return s.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 /**
  * Generate a SkyPilot YAML string from a config object.
  * Uses template strings — no YAML library needed for our flat structure.
@@ -109,7 +115,7 @@ export function parse_check(stdout: string): {
 } {
   const enabled: string[] = [];
   const disabled: Record<string, string> = {};
-  const lines = stdout.split("\n");
+  const lines = strip_ansi(stdout).split("\n");
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
